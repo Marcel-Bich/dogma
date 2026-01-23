@@ -3,14 +3,27 @@ package updater
 import (
 	"context"
 	"time"
-
-	selfupdate "github.com/creativeprojects/go-selfupdate"
 )
 
 // Version is set at build time via ldflags.
 var Version = "dev"
 
 const repoSlug = "Marcel-Bich/dogma"
+
+// releaseInfo abstracts the subset of a release we need for testing.
+type releaseInfo interface {
+	GreaterThan(version string) bool
+	GetVersion() string
+	GetReleaseNotes() string
+	GetAssetURL() string
+	GetAssetName() string
+}
+
+// detectLatestFn detects the latest release. Set by init() in selfupdate.go.
+var detectLatestFn func(ctx context.Context) (releaseInfo, bool, error)
+
+// applyUpdateFn applies an update. Set by init() in selfupdate.go.
+var applyUpdateFn func(ctx context.Context) error
 
 // UpdateInfo holds information about an available update.
 type UpdateInfo struct {
@@ -30,7 +43,7 @@ func CheckForUpdate(ctx context.Context) (*UpdateInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	latest, found, err := selfupdate.DetectLatest(ctx, selfupdate.ParseSlug(repoSlug))
+	latest, found, err := detectLatestFn(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -43,32 +56,14 @@ func CheckForUpdate(ctx context.Context) (*UpdateInfo, error) {
 	}
 
 	return &UpdateInfo{
-		Version:      latest.Version(),
-		ReleaseNotes: latest.ReleaseNotes,
-		AssetURL:     latest.AssetURL,
-		AssetName:    latest.AssetName,
+		Version:      latest.GetVersion(),
+		ReleaseNotes: latest.GetReleaseNotes(),
+		AssetURL:     latest.GetAssetURL(),
+		AssetName:    latest.GetAssetName(),
 	}, nil
 }
 
 // ApplyUpdate downloads and applies the update described by info.
 func ApplyUpdate(ctx context.Context, info *UpdateInfo) error {
-	updater, err := selfupdate.NewUpdater(selfupdate.Config{})
-	if err != nil {
-		return err
-	}
-
-	release, found, err := updater.DetectLatest(ctx, selfupdate.ParseSlug(repoSlug))
-	if err != nil {
-		return err
-	}
-	if !found {
-		return nil
-	}
-
-	exe, err := selfupdate.ExecutablePath()
-	if err != nil {
-		return err
-	}
-
-	return updater.UpdateTo(ctx, release, exe)
+	return applyUpdateFn(ctx)
 }

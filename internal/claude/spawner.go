@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"sync"
 	"syscall"
@@ -12,6 +14,39 @@ import (
 
 // EventHandler is the callback type invoked for each streaming event.
 type EventHandler func(event StreamEvent)
+
+// Cmd abstracts the subset of exec.Cmd used by Spawner.
+type Cmd interface {
+	StdoutPipe() (io.ReadCloser, error)
+	Start() error
+	Wait() error
+	SetDir(dir string)
+	Signal(sig os.Signal) error
+}
+
+// execCmd wraps a real exec.Cmd to satisfy the Cmd interface.
+type execCmd struct {
+	cmd *exec.Cmd
+}
+
+func (c *execCmd) StdoutPipe() (io.ReadCloser, error) { return c.cmd.StdoutPipe() }
+func (c *execCmd) Start() error                       { return c.cmd.Start() }
+func (c *execCmd) Wait() error                        { return c.cmd.Wait() }
+func (c *execCmd) SetDir(dir string)                  { c.cmd.Dir = dir }
+
+func (c *execCmd) Signal(sig os.Signal) error {
+	if c.cmd.Process == nil {
+		return nil
+	}
+	return c.cmd.Process.Signal(sig)
+}
+
+// CmdFactory creates Cmd instances. Used for dependency injection in tests.
+type CmdFactory func(ctx context.Context, name string, args ...string) Cmd
+
+func defaultCmdFactory(ctx context.Context, name string, args ...string) Cmd {
+	return &execCmd{cmd: exec.CommandContext(ctx, name, args...)}
+}
 
 // SpawnerConfig holds configuration for the Claude CLI spawner.
 type SpawnerConfig struct {
@@ -21,9 +56,10 @@ type SpawnerConfig struct {
 
 // Spawner manages a claude CLI child process.
 type Spawner struct {
-	config SpawnerConfig
-	mu     sync.Mutex
-	cmd    *exec.Cmd
+	config     SpawnerConfig
+	cmdFactory CmdFactory
+	mu         sync.Mutex
+	cmd        Cmd
 }
 
 // NewSpawner creates a Spawner with the given config.
@@ -31,7 +67,7 @@ func NewSpawner(config SpawnerConfig) *Spawner {
 	if config.ClaudePath == "" {
 		config.ClaudePath = "claude"
 	}
-	return &Spawner{config: config}
+	return &Spawner{config: config, cmdFactory: defaultCmdFactory}
 }
 
 // SendPrompt starts a claude -p process with streaming output and calls
@@ -51,15 +87,15 @@ func (s *Spawner) SendPromptWithSession(ctx context.Context, prompt string, sess
 func (s *Spawner) Cancel() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.cmd != nil && s.cmd.Process != nil {
-		_ = s.cmd.Process.Signal(syscall.SIGTERM)
+	if s.cmd != nil {
+		_ = s.cmd.Signal(syscall.SIGTERM)
 	}
 }
 
 func (s *Spawner) run(ctx context.Context, args []string, handler EventHandler) error {
-	cmd := exec.CommandContext(ctx, s.config.ClaudePath, args...)
+	cmd := s.cmdFactory(ctx, s.config.ClaudePath, args...)
 	if s.config.WorkingDir != "" {
-		cmd.Dir = s.config.WorkingDir
+		cmd.SetDir(s.config.WorkingDir)
 	}
 
 	stdout, err := cmd.StdoutPipe()
