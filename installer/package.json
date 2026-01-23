@@ -7,6 +7,8 @@
   },
   "scripts": {
     "postinstall": "node dist/install.js",
+    "preuninstall": "node dist/uninstall.js",
+    "prepublishOnly": "npm run build",
     "build": "tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
