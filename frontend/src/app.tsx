@@ -1,7 +1,65 @@
+import { useEffect } from 'preact/hooks'
+import { EventsOn } from '../wailsjs/runtime/runtime'
+import { SendPrompt, CancelPrompt } from '../wailsjs/go/main/App'
+import { ChatInput } from './components/ChatInput'
+import { MessageList } from './components/MessageList'
+import {
+  messages,
+  loading,
+  error,
+  handleBridgeEvent,
+  setLoading,
+  setError,
+} from './state'
+import type { BridgeEvent } from './types'
+
 export function App() {
+  useEffect(() => {
+    const unsubEvent = EventsOn('claude:event', (event: BridgeEvent) => {
+      handleBridgeEvent(event)
+    })
+
+    const unsubDone = EventsOn('claude:done', () => {
+      setLoading(false)
+    })
+
+    const unsubError = EventsOn('claude:error', (msg: string) => {
+      setError(msg)
+      setLoading(false)
+    })
+
+    return () => {
+      unsubEvent()
+      unsubDone()
+      unsubError()
+    }
+  }, [])
+
+  function handleSend(text: string) {
+    setLoading(true)
+    setError(null)
+    SendPrompt(text)
+  }
+
+  function handleCancel() {
+    CancelPrompt()
+  }
+
   return (
-    <div class="flex items-center justify-center min-h-screen bg-gray-900">
-      <h1 class="text-4xl font-bold text-white">DOGMA</h1>
+    <div class="flex flex-col h-screen bg-gray-900">
+      <div class="flex-1 overflow-y-auto">
+        <MessageList messages={messages.value} loading={loading.value} />
+      </div>
+      {error.value && (
+        <div data-testid="error-message" class="px-4 py-2 bg-red-900 text-red-200 text-sm">
+          {error.value}
+        </div>
+      )}
+      <ChatInput
+        onSend={handleSend}
+        onCancel={handleCancel}
+        loading={loading.value}
+      />
     </div>
   )
 }
