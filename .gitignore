@@ -6,6 +6,18 @@
 # Local ignores (not versioned): .git/info/exclude
 # =============================================================================
 
+# Compiled binary (Wails output)
+/dogma
+/dogma-*
+
+# Wails build artifacts
+frontend/package.json.md5
+
+# Cross-platform compiled binaries
+**/*.exe
+**/*.dll
+**/*.dylib
+
 # Live-Hack for less versioning headaches:
 # Everything prefixed with "**/" to catch subdirectories too.
 
