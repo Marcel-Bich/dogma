@@ -1,0 +1,23 @@
+{
+    "name": "@marcel-bich/dogma",
+    "version": "0.0.1",
+    "description": "CLI installer for DOGMA - a desktop GUI for Claude Code",
+    "private": false,
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Marcel-Bich/dogma"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "postinstall": "git config core.hooksPath .githooks 2>/dev/null || true",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "lint:sh": "find . -name '*.sh' -not -path './node_modules/*' -exec shellcheck {} +"
+    },
+    "devDependencies": {
+        "prettier": "^3.2.5"
+    }
+}
