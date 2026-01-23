@@ -180,6 +180,54 @@ describe('state', () => {
       })
     })
 
+    it('assistant event with no content fields does not add a block', () => {
+      const event: BridgeEvent = { type: 'assistant' }
+      handleBridgeEvent(event)
+      expect(messages.value).toHaveLength(1)
+      expect(messages.value[0].blocks).toHaveLength(0)
+    })
+
+    it('system event without session_id does not change sessionId', () => {
+      handleBridgeEvent({ type: 'system', session_id: 'initial' })
+      handleBridgeEvent({ type: 'system' })
+      expect(sessionId.value).toBe('initial')
+    })
+
+    it('result event with empty result uses empty string', () => {
+      const event: BridgeEvent = { type: 'result' }
+      handleBridgeEvent(event)
+      expect(messages.value[0].blocks[0]).toEqual({
+        type: 'result',
+        content: '',
+      })
+    })
+
+    it('tool_use event without tool_input uses empty string', () => {
+      const event: BridgeEvent = { type: 'assistant', tool_name: 'bash' }
+      handleBridgeEvent(event)
+      expect(messages.value[0].blocks[0]).toEqual({
+        type: 'tool_use',
+        content: 'bash',
+        toolName: 'bash',
+        toolInput: '',
+      })
+    })
+
+    it('result event with is_error=true and no result uses empty string', () => {
+      const event: BridgeEvent = { type: 'result', is_error: true }
+      handleBridgeEvent(event)
+      expect(messages.value[0].blocks[0]).toEqual({
+        type: 'error',
+        content: '',
+      })
+    })
+
+    it('unknown event type is ignored', () => {
+      const event: BridgeEvent = { type: 'unknown' }
+      handleBridgeEvent(event)
+      expect(messages.value).toHaveLength(0)
+    })
+
     it('new assistant event after result starts a new message', () => {
       const ev1: BridgeEvent = { type: 'assistant', text: 'first turn' }
       const ev2: BridgeEvent = { type: 'result', result: 'done' }
