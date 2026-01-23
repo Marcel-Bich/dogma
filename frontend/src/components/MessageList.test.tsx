@@ -6,6 +6,8 @@ import type { ChatMessage } from '../types'
 describe('MessageList', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    // jsdom does not implement scrollIntoView
+    Element.prototype.scrollIntoView = vi.fn()
   })
 
   describe('empty state', () => {
