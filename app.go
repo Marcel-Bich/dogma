@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
+
+	"github.com/Marcel-Bich/dogma/internal/claude"
 )
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx     context.Context
+	spawner *claude.Spawner
 }
 
 // NewApp creates a new App application struct
@@ -19,9 +22,26 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.spawner = claude.NewSpawner(claude.SpawnerConfig{
+		ClaudePath: "claude",
+	})
 }
 
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
+// SendPrompt sends a prompt to Claude and returns the final result text.
+func (a *App) SendPrompt(prompt string) string {
+	var result string
+
+	err := a.spawner.SendPrompt(a.ctx, prompt, func(event claude.StreamEvent) {
+		if event.Type == "result" {
+			var re claude.ResultEvent
+			if err := json.Unmarshal(event.Payload, &re); err == nil {
+				result = re.Result
+			}
+		}
+	})
+
+	if err != nil {
+		return "error: " + err.Error()
+	}
+	return result
 }
