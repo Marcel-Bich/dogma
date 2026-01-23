@@ -1,162 +1,467 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/Marcel-Bich/dogma/internal/claude"
+	"github.com/Marcel-Bich/dogma/internal/updater"
 )
 
-func TestToBridgeEvent_SystemInit(t *testing.T) {
-	input := []byte(`{"type":"system","subtype":"init","session_id":"abc123","tools":["Bash","Read"],"model":"claude-opus-4-5-20251101"}`)
+// --- Test doubles ---
 
-	parsed, err := claude.ParseEvent(input)
-	if err != nil {
-		t.Fatalf("ParseEvent failed: %v", err)
+type mockSpawner struct {
+	mu              sync.Mutex
+	sendPromptFn    func(ctx context.Context, prompt string, handler claude.EventHandler) error
+	sendWithSessFn  func(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error
+	cancelCalled    bool
+}
+
+func (m *mockSpawner) SendPrompt(ctx context.Context, prompt string, handler claude.EventHandler) error {
+	if m.sendPromptFn != nil {
+		return m.sendPromptFn(ctx, prompt, handler)
+	}
+	return nil
+}
+
+func (m *mockSpawner) SendPromptWithSession(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error {
+	if m.sendWithSessFn != nil {
+		return m.sendWithSessFn(ctx, prompt, sessionID, handler)
+	}
+	return nil
+}
+
+func (m *mockSpawner) Cancel() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.cancelCalled = true
+}
+
+type emittedEvent struct {
+	name string
+	data []interface{}
+}
+
+type mockEmitter struct {
+	mu     sync.Mutex
+	events []emittedEvent
+}
+
+func (m *mockEmitter) Emit(eventName string, data ...interface{}) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.events = append(m.events, emittedEvent{name: eventName, data: data})
+}
+
+func (m *mockEmitter) getEvents() []emittedEvent {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cp := make([]emittedEvent, len(m.events))
+	copy(cp, m.events)
+	return cp
+}
+
+// --- streamPrompt tests ---
+
+func TestStreamPrompt_NewSession_Success(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendPromptFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
+			if prompt != "hello" {
+				t.Errorf("expected prompt 'hello', got %q", prompt)
+			}
+			// Simulate a system init event
+			payload := []byte(`{"type":"system","subtype":"init","session_id":"s1","model":"opus"}`)
+			handler(claude.StreamEvent{Type: "system", Payload: json.RawMessage(payload)})
+			return nil
+		},
 	}
 
-	be := claude.ToBridgeEvent(parsed)
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
 
-	if be.Type != "system" {
-		t.Errorf("expected Type=system, got %q", be.Type)
+	app.streamPrompt("hello", "")
+
+	events := emitter.getEvents()
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d: %+v", len(events), events)
 	}
-	if be.SessionID != "abc123" {
-		t.Errorf("expected SessionID=abc123, got %q", be.SessionID)
+
+	if events[0].name != "claude:event" {
+		t.Errorf("expected first event name 'claude:event', got %q", events[0].name)
 	}
-	if be.Model != "claude-opus-4-5-20251101" {
-		t.Errorf("expected Model=claude-opus-4-5-20251101, got %q", be.Model)
+	bridge, ok := events[0].data[0].(claude.BridgeEvent)
+	if !ok {
+		t.Fatalf("expected BridgeEvent, got %T", events[0].data[0])
 	}
-	if be.Subtype != "init" {
-		t.Errorf("expected Subtype=init, got %q", be.Subtype)
+	if bridge.Type != "system" {
+		t.Errorf("expected bridge type 'system', got %q", bridge.Type)
 	}
-	if be.Text != "" {
-		t.Errorf("expected empty Text, got %q", be.Text)
+	if bridge.SessionID != "s1" {
+		t.Errorf("expected session_id 's1', got %q", bridge.SessionID)
 	}
-	if be.Result != "" {
-		t.Errorf("expected empty Result, got %q", be.Result)
+
+	if events[1].name != "claude:done" {
+		t.Errorf("expected second event 'claude:done', got %q", events[1].name)
 	}
 }
 
-func TestToBridgeEvent_AssistantText(t *testing.T) {
-	input := []byte(`{"type":"assistant","message":{"id":"msg_xxx","type":"message","role":"assistant","content":[{"type":"text","text":"Hello world."}],"usage":{"input_tokens":3,"output_tokens":2}}}`)
-
-	parsed, err := claude.ParseEvent(input)
-	if err != nil {
-		t.Fatalf("ParseEvent failed: %v", err)
+func TestStreamPrompt_WithSession_Success(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendWithSessFn: func(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error {
+			if prompt != "continue" {
+				t.Errorf("expected prompt 'continue', got %q", prompt)
+			}
+			if sessionID != "sess-42" {
+				t.Errorf("expected sessionID 'sess-42', got %q", sessionID)
+			}
+			return nil
+		},
 	}
 
-	be := claude.ToBridgeEvent(parsed)
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
 
-	if be.Type != "assistant" {
-		t.Errorf("expected Type=assistant, got %q", be.Type)
+	app.streamPrompt("continue", "sess-42")
+
+	events := emitter.getEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event (claude:done), got %d: %+v", len(events), events)
 	}
-	if be.Text != "Hello world." {
-		t.Errorf("expected Text='Hello world.', got %q", be.Text)
-	}
-	if be.Thinking != "" {
-		t.Errorf("expected empty Thinking, got %q", be.Thinking)
-	}
-	if be.ToolName != "" {
-		t.Errorf("expected empty ToolName, got %q", be.ToolName)
+	if events[0].name != "claude:done" {
+		t.Errorf("expected 'claude:done', got %q", events[0].name)
 	}
 }
 
-func TestToBridgeEvent_AssistantThinking(t *testing.T) {
-	input := []byte(`{"type":"assistant","message":{"id":"msg_xxx","type":"message","role":"assistant","content":[{"type":"thinking","thinking":"Let me consider..."}]}}`)
-
-	parsed, err := claude.ParseEvent(input)
-	if err != nil {
-		t.Fatalf("ParseEvent failed: %v", err)
+func TestStreamPrompt_NewSession_Error(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendPromptFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
+			return errors.New("spawn failed")
+		},
 	}
 
-	be := claude.ToBridgeEvent(parsed)
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
 
-	if be.Type != "assistant" {
-		t.Errorf("expected Type=assistant, got %q", be.Type)
+	app.streamPrompt("hello", "")
+
+	events := emitter.getEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d: %+v", len(events), events)
 	}
-	if be.Thinking != "Let me consider..." {
-		t.Errorf("expected Thinking='Let me consider...', got %q", be.Thinking)
+	if events[0].name != "claude:error" {
+		t.Errorf("expected 'claude:error', got %q", events[0].name)
 	}
-	if be.Text != "" {
-		t.Errorf("expected empty Text, got %q", be.Text)
+	if events[0].data[0] != "spawn failed" {
+		t.Errorf("expected error message 'spawn failed', got %v", events[0].data[0])
 	}
 }
 
-func TestToBridgeEvent_AssistantToolUse(t *testing.T) {
-	input := []byte(`{"type":"assistant","message":{"id":"msg_xxx","type":"message","role":"assistant","content":[{"type":"tool_use","id":"tu_xxx","name":"Bash","input":{"command":"ls"}}]}}`)
-
-	parsed, err := claude.ParseEvent(input)
-	if err != nil {
-		t.Fatalf("ParseEvent failed: %v", err)
+func TestStreamPrompt_WithSession_Error(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendWithSessFn: func(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error {
+			return errors.New("session error")
+		},
 	}
 
-	be := claude.ToBridgeEvent(parsed)
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
 
-	if be.Type != "assistant" {
-		t.Errorf("expected Type=assistant, got %q", be.Type)
+	app.streamPrompt("test", "sess-99")
+
+	events := emitter.getEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
 	}
-	if be.ToolName != "Bash" {
-		t.Errorf("expected ToolName=Bash, got %q", be.ToolName)
+	if events[0].name != "claude:error" {
+		t.Errorf("expected 'claude:error', got %q", events[0].name)
 	}
-	if be.ToolInput == nil {
-		t.Fatal("expected ToolInput to be non-nil")
-	}
-	var toolInput map[string]interface{}
-	if err := json.Unmarshal(be.ToolInput, &toolInput); err != nil {
-		t.Fatalf("failed to unmarshal ToolInput: %v", err)
-	}
-	if toolInput["command"] != "ls" {
-		t.Errorf("expected command=ls, got %v", toolInput["command"])
+	if events[0].data[0] != "session error" {
+		t.Errorf("expected 'session error', got %v", events[0].data[0])
 	}
 }
 
-func TestToBridgeEvent_ResultSuccess(t *testing.T) {
-	input := []byte(`{"type":"result","subtype":"success","is_error":false,"duration_ms":3178,"num_turns":1,"result":"Hello world.","session_id":"abc123","total_cost_usd":0.19}`)
-
-	parsed, err := claude.ParseEvent(input)
-	if err != nil {
-		t.Fatalf("ParseEvent failed: %v", err)
+func TestStreamPrompt_Handler_ParseError(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendPromptFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
+			// Send invalid JSON payload
+			handler(claude.StreamEvent{Type: "system", Payload: json.RawMessage(`{invalid`)})
+			return nil
+		},
 	}
 
-	be := claude.ToBridgeEvent(parsed)
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
 
-	if be.Type != "result" {
-		t.Errorf("expected Type=result, got %q", be.Type)
+	app.streamPrompt("hello", "")
+
+	events := emitter.getEvents()
+	// Only claude:done should be emitted (parse error is silently skipped)
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event (claude:done), got %d: %+v", len(events), events)
 	}
-	if be.IsError {
-		t.Error("expected IsError=false")
-	}
-	if be.Result != "Hello world." {
-		t.Errorf("expected Result='Hello world.', got %q", be.Result)
-	}
-	if be.SessionID != "abc123" {
-		t.Errorf("expected SessionID=abc123, got %q", be.SessionID)
-	}
-	if be.Subtype != "success" {
-		t.Errorf("expected Subtype=success, got %q", be.Subtype)
+	if events[0].name != "claude:done" {
+		t.Errorf("expected 'claude:done', got %q", events[0].name)
 	}
 }
 
-func TestToBridgeEvent_ResultError(t *testing.T) {
-	input := []byte(`{"type":"result","subtype":"error","is_error":true,"result":"Error: something failed","session_id":"abc123"}`)
-
-	parsed, err := claude.ParseEvent(input)
-	if err != nil {
-		t.Fatalf("ParseEvent failed: %v", err)
+func TestStreamPrompt_Handler_EmptyType(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendPromptFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
+			// Send event with no type field (empty after parse)
+			handler(claude.StreamEvent{Type: "", Payload: json.RawMessage(`{"foo":"bar"}`)})
+			return nil
+		},
 	}
 
-	be := claude.ToBridgeEvent(parsed)
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
 
-	if be.Type != "result" {
-		t.Errorf("expected Type=result, got %q", be.Type)
+	app.streamPrompt("hello", "")
+
+	events := emitter.getEvents()
+	// Only claude:done should be emitted (empty type is skipped)
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event (claude:done), got %d: %+v", len(events), events)
 	}
-	if !be.IsError {
-		t.Error("expected IsError=true")
+	if events[0].name != "claude:done" {
+		t.Errorf("expected 'claude:done', got %q", events[0].name)
 	}
-	if be.Result != "Error: something failed" {
-		t.Errorf("expected Result='Error: something failed', got %q", be.Result)
+}
+
+func TestStreamPrompt_Handler_MultipleEvents(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendPromptFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
+			// System init
+			handler(claude.StreamEvent{
+				Type:    "system",
+				Payload: json.RawMessage(`{"type":"system","subtype":"init","session_id":"s1","model":"opus"}`),
+			})
+			// Assistant text
+			handler(claude.StreamEvent{
+				Type:    "assistant",
+				Payload: json.RawMessage(`{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}`),
+			})
+			// Result
+			handler(claude.StreamEvent{
+				Type:    "result",
+				Payload: json.RawMessage(`{"type":"result","subtype":"success","result":"done","session_id":"s1"}`),
+			})
+			return nil
+		},
 	}
-	if be.Subtype != "error" {
-		t.Errorf("expected Subtype=error, got %q", be.Subtype)
+
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
+
+	app.streamPrompt("multi", "")
+
+	events := emitter.getEvents()
+	// 3 claude:event + 1 claude:done
+	if len(events) != 4 {
+		t.Fatalf("expected 4 events, got %d: %+v", len(events), events)
+	}
+	for i := 0; i < 3; i++ {
+		if events[i].name != "claude:event" {
+			t.Errorf("event[%d]: expected 'claude:event', got %q", i, events[i].name)
+		}
+	}
+	if events[3].name != "claude:done" {
+		t.Errorf("expected last event 'claude:done', got %q", events[3].name)
+	}
+}
+
+// --- CancelPrompt tests ---
+
+func TestCancelPrompt(t *testing.T) {
+	spawner := &mockSpawner{}
+	app := &App{
+		spawner: spawner,
+	}
+
+	app.CancelPrompt()
+
+	spawner.mu.Lock()
+	defer spawner.mu.Unlock()
+	if !spawner.cancelCalled {
+		t.Error("expected Cancel() to be called on spawner")
+	}
+}
+
+// --- SendPrompt / SendPromptWithSession tests (goroutine launchers) ---
+
+func TestSendPrompt_LaunchesGoroutine(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendPromptFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
+			return nil
+		},
+	}
+
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
+
+	app.SendPrompt("test")
+
+	// Wait for goroutine to complete
+	time.Sleep(50 * time.Millisecond)
+
+	events := emitter.getEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].name != "claude:done" {
+		t.Errorf("expected 'claude:done', got %q", events[0].name)
+	}
+}
+
+func TestSendPromptWithSession_LaunchesGoroutine(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendWithSessFn: func(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error {
+			return nil
+		},
+	}
+
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
+
+	app.SendPromptWithSession("test", "s1")
+
+	// Wait for goroutine to complete
+	time.Sleep(50 * time.Millisecond)
+
+	events := emitter.getEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].name != "claude:done" {
+		t.Errorf("expected 'claude:done', got %q", events[0].name)
+	}
+}
+
+// --- ApplyUpdate tests ---
+
+func TestApplyUpdate_NoUpdateInfo(t *testing.T) {
+	emitter := &mockEmitter{}
+	app := &App{
+		ctx:        context.Background(),
+		emitter:    emitter,
+		updateInfo: nil,
+	}
+
+	app.ApplyUpdate()
+
+	events := emitter.getEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].name != "app:update-error" {
+		t.Errorf("expected 'app:update-error', got %q", events[0].name)
+	}
+	if events[0].data[0] != "no update available" {
+		t.Errorf("expected 'no update available', got %v", events[0].data[0])
+	}
+}
+
+func TestApplyUpdate_Success(t *testing.T) {
+	emitter := &mockEmitter{}
+	info := &updater.UpdateInfo{Version: "1.2.3"}
+	app := &App{
+		ctx:        context.Background(),
+		emitter:    emitter,
+		updateInfo: info,
+		applyUpdate: func(ctx context.Context, i *updater.UpdateInfo) error {
+			if i.Version != "1.2.3" {
+				t.Errorf("expected version '1.2.3', got %q", i.Version)
+			}
+			return nil
+		},
+	}
+
+	app.ApplyUpdate()
+
+	// Wait for goroutine
+	time.Sleep(50 * time.Millisecond)
+
+	events := emitter.getEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d: %+v", len(events), events)
+	}
+	if events[0].name != "app:update-applied" {
+		t.Errorf("expected 'app:update-applied', got %q", events[0].name)
+	}
+	gotInfo, ok := events[0].data[0].(*updater.UpdateInfo)
+	if !ok {
+		t.Fatalf("expected *updater.UpdateInfo, got %T", events[0].data[0])
+	}
+	if gotInfo.Version != "1.2.3" {
+		t.Errorf("expected version '1.2.3', got %q", gotInfo.Version)
+	}
+}
+
+func TestApplyUpdate_Error(t *testing.T) {
+	emitter := &mockEmitter{}
+	info := &updater.UpdateInfo{Version: "1.2.3"}
+	app := &App{
+		ctx:        context.Background(),
+		emitter:    emitter,
+		updateInfo: info,
+		applyUpdate: func(ctx context.Context, i *updater.UpdateInfo) error {
+			return errors.New("download failed")
+		},
+	}
+
+	app.ApplyUpdate()
+
+	// Wait for goroutine
+	time.Sleep(50 * time.Millisecond)
+
+	events := emitter.getEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d: %+v", len(events), events)
+	}
+	if events[0].name != "app:update-error" {
+		t.Errorf("expected 'app:update-error', got %q", events[0].name)
+	}
+	if events[0].data[0] != "download failed" {
+		t.Errorf("expected 'download failed', got %v", events[0].data[0])
 	}
 }
