@@ -4,13 +4,15 @@ import (
 	"context"
 
 	"github.com/Marcel-Bich/dogma/internal/claude"
+	"github.com/Marcel-Bich/dogma/internal/updater"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
 type App struct {
-	ctx     context.Context
-	spawner *claude.Spawner
+	ctx        context.Context
+	spawner    *claude.Spawner
+	updateInfo *updater.UpdateInfo
 }
 
 // NewApp creates a new App application struct
@@ -25,6 +27,18 @@ func (a *App) startup(ctx context.Context) {
 	a.spawner = claude.NewSpawner(claude.SpawnerConfig{
 		ClaudePath: "claude",
 	})
+
+	go func() {
+		info, err := updater.CheckForUpdate(ctx)
+		if err != nil {
+			runtime.LogWarning(ctx, "update check failed: "+err.Error())
+			return
+		}
+		if info != nil {
+			a.updateInfo = info
+			runtime.EventsEmit(ctx, "app:update-available", info)
+		}
+	}()
 }
 
 // SendPrompt sends a prompt to Claude and streams events to the frontend.
@@ -40,6 +54,23 @@ func (a *App) SendPromptWithSession(prompt string, sessionID string) {
 // CancelPrompt cancels the currently running Claude process.
 func (a *App) CancelPrompt() {
 	a.spawner.Cancel()
+}
+
+// ApplyUpdate downloads and applies the pending update.
+func (a *App) ApplyUpdate() {
+	if a.updateInfo == nil {
+		runtime.EventsEmit(a.ctx, "app:update-error", "no update available")
+		return
+	}
+
+	go func() {
+		err := updater.ApplyUpdate(a.ctx, a.updateInfo)
+		if err != nil {
+			runtime.EventsEmit(a.ctx, "app:update-error", err.Error())
+			return
+		}
+		runtime.EventsEmit(a.ctx, "app:update-applied", a.updateInfo)
+	}()
 }
 
 func (a *App) streamPrompt(prompt string, sessionID string) {
