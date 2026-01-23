@@ -83,4 +83,11 @@ describe('ChatInput', () => {
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true })
     expect(props.onSend).not.toHaveBeenCalled()
   })
+
+  it('Enter on empty input does not trigger send', () => {
+    const { getByPlaceholderText, props } = setup()
+    const textarea = getByPlaceholderText('Enter your prompt...')
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+    expect(props.onSend).not.toHaveBeenCalled()
+  })
 })
