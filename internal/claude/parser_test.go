@@ -2,6 +2,7 @@ package claude
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -269,5 +270,76 @@ func TestParseEvent_UnknownType(t *testing.T) {
 	}
 	if raw["type"] != "future_type" {
 		t.Errorf("expected raw type=future_type, got %v", raw["type"])
+	}
+}
+
+func TestStreamEvent_UnmarshalJSON_InvalidJSON(t *testing.T) {
+	// "not valid json" is rejected by the outer json.Unmarshal before
+	// reaching UnmarshalJSON. Use a valid JSON value that fails inside
+	// the custom UnmarshalJSON (cannot unmarshal number into struct).
+	var ev StreamEvent
+	err := json.Unmarshal([]byte("123"), &ev)
+	if err == nil {
+		t.Fatal("expected error for invalid JSON value, got nil")
+	}
+}
+
+func TestStreamEvent_UnmarshalJSON_ValidJSON(t *testing.T) {
+	var ev StreamEvent
+	err := json.Unmarshal([]byte(`{"type":"system","subtype":"init"}`), &ev)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ev.Type != "system" {
+		t.Errorf("expected Type=system, got %q", ev.Type)
+	}
+	if ev.Payload == nil {
+		t.Error("expected Payload to be set")
+	}
+	// Verify Payload contains the original JSON
+	if string(ev.Payload) != `{"type":"system","subtype":"init"}` {
+		t.Errorf("expected Payload to contain original JSON, got %q", string(ev.Payload))
+	}
+}
+
+func TestParseEvent_SystemUnmarshalError(t *testing.T) {
+	// JSON that parses as StreamEvent (has "type":"system") but fails
+	// when unmarshalled into SystemEvent because tools expects []string not number
+	input := []byte(`{"type":"system","tools":999}`)
+
+	_, err := ParseEvent(input)
+	if err == nil {
+		t.Fatal("expected error for invalid system event, got nil")
+	}
+	if !strings.Contains(err.Error(), "parse system event") {
+		t.Errorf("expected error to contain 'parse system event', got: %v", err)
+	}
+}
+
+func TestParseEvent_AssistantUnmarshalError(t *testing.T) {
+	// JSON that parses as StreamEvent (has "type":"assistant") but fails
+	// when unmarshalled into AssistantEvent because message expects object not string
+	input := []byte(`{"type":"assistant","message":"not an object"}`)
+
+	_, err := ParseEvent(input)
+	if err == nil {
+		t.Fatal("expected error for invalid assistant event, got nil")
+	}
+	if !strings.Contains(err.Error(), "parse assistant event") {
+		t.Errorf("expected error to contain 'parse assistant event', got: %v", err)
+	}
+}
+
+func TestParseEvent_ResultUnmarshalError(t *testing.T) {
+	// JSON that parses as StreamEvent (has "type":"result") but fails
+	// when unmarshalled into ResultEvent because num_turns expects int not string
+	input := []byte(`{"type":"result","num_turns":"not a number"}`)
+
+	_, err := ParseEvent(input)
+	if err == nil {
+		t.Fatal("expected error for invalid result event, got nil")
+	}
+	if !strings.Contains(err.Error(), "parse result event") {
+		t.Errorf("expected error to contain 'parse result event', got: %v", err)
 	}
 }
