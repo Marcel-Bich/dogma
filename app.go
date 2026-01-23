@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/Marcel-Bich/dogma/internal/claude"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -27,21 +27,41 @@ func (a *App) startup(ctx context.Context) {
 	})
 }
 
-// SendPrompt sends a prompt to Claude and returns the final result text.
-func (a *App) SendPrompt(prompt string) string {
-	var result string
+// SendPrompt sends a prompt to Claude and streams events to the frontend.
+func (a *App) SendPrompt(prompt string) {
+	go a.streamPrompt(prompt, "")
+}
 
-	err := a.spawner.SendPrompt(a.ctx, prompt, func(event claude.StreamEvent) {
-		if event.Type == "result" {
-			var re claude.ResultEvent
-			if err := json.Unmarshal(event.Payload, &re); err == nil {
-				result = re.Result
-			}
+// SendPromptWithSession sends a prompt to Claude resuming an existing session.
+func (a *App) SendPromptWithSession(prompt string, sessionID string) {
+	go a.streamPrompt(prompt, sessionID)
+}
+
+// CancelPrompt cancels the currently running Claude process.
+func (a *App) CancelPrompt() {
+	a.spawner.Cancel()
+}
+
+func (a *App) streamPrompt(prompt string, sessionID string) {
+	handler := func(event claude.StreamEvent) {
+		parsed, err := claude.ParseEvent(event.Payload)
+		if err != nil || parsed.Type == "" {
+			return
 		}
-	})
+		bridge := claude.ToBridgeEvent(parsed)
+		runtime.EventsEmit(a.ctx, "claude:event", bridge)
+	}
+
+	var err error
+	if sessionID == "" {
+		err = a.spawner.SendPrompt(a.ctx, prompt, handler)
+	} else {
+		err = a.spawner.SendPromptWithSession(a.ctx, prompt, sessionID, handler)
+	}
 
 	if err != nil {
-		return "error: " + err.Error()
+		runtime.EventsEmit(a.ctx, "claude:error", err.Error())
+	} else {
+		runtime.EventsEmit(a.ctx, "claude:done", nil)
 	}
-	return result
 }
