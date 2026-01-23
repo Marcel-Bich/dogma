@@ -8,10 +8,36 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// promptSpawner abstracts the Claude CLI spawner for testability.
+type promptSpawner interface {
+	SendPrompt(ctx context.Context, prompt string, handler claude.EventHandler) error
+	SendPromptWithSession(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error
+	Cancel()
+}
+
+// eventEmitter abstracts Wails runtime.EventsEmit for testability.
+type eventEmitter interface {
+	Emit(eventName string, data ...interface{})
+}
+
+// updateApplier abstracts the update apply call for testability.
+type updateApplier func(ctx context.Context, info *updater.UpdateInfo) error
+
+// wailsEmitter wraps the Wails runtime EventsEmit function.
+type wailsEmitter struct {
+	ctx context.Context
+}
+
+func (e *wailsEmitter) Emit(eventName string, data ...interface{}) {
+	runtime.EventsEmit(e.ctx, eventName, data...)
+}
+
 // App struct
 type App struct {
 	ctx        context.Context
-	spawner    *claude.Spawner
+	spawner    promptSpawner
+	emitter    eventEmitter
+	applyUpdate updateApplier
 	updateInfo *updater.UpdateInfo
 }
 
@@ -27,6 +53,8 @@ func (a *App) startup(ctx context.Context) {
 	a.spawner = claude.NewSpawner(claude.SpawnerConfig{
 		ClaudePath: "claude",
 	})
+	a.emitter = &wailsEmitter{ctx: ctx}
+	a.applyUpdate = updater.ApplyUpdate
 
 	go func() {
 		info, err := updater.CheckForUpdate(ctx)
@@ -59,17 +87,17 @@ func (a *App) CancelPrompt() {
 // ApplyUpdate downloads and applies the pending update.
 func (a *App) ApplyUpdate() {
 	if a.updateInfo == nil {
-		runtime.EventsEmit(a.ctx, "app:update-error", "no update available")
+		a.emitter.Emit("app:update-error", "no update available")
 		return
 	}
 
 	go func() {
-		err := updater.ApplyUpdate(a.ctx, a.updateInfo)
+		err := a.applyUpdate(a.ctx, a.updateInfo)
 		if err != nil {
-			runtime.EventsEmit(a.ctx, "app:update-error", err.Error())
+			a.emitter.Emit("app:update-error", err.Error())
 			return
 		}
-		runtime.EventsEmit(a.ctx, "app:update-applied", a.updateInfo)
+		a.emitter.Emit("app:update-applied", a.updateInfo)
 	}()
 }
 
@@ -80,7 +108,7 @@ func (a *App) streamPrompt(prompt string, sessionID string) {
 			return
 		}
 		bridge := claude.ToBridgeEvent(parsed)
-		runtime.EventsEmit(a.ctx, "claude:event", bridge)
+		a.emitter.Emit("claude:event", bridge)
 	}
 
 	var err error
@@ -91,8 +119,8 @@ func (a *App) streamPrompt(prompt string, sessionID string) {
 	}
 
 	if err != nil {
-		runtime.EventsEmit(a.ctx, "claude:error", err.Error())
+		a.emitter.Emit("claude:error", err.Error())
 	} else {
-		runtime.EventsEmit(a.ctx, "claude:done", nil)
+		a.emitter.Emit("claude:done", nil)
 	}
 }
