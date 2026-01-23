@@ -9,5 +9,10 @@
   "author": {
     "name": "Marcel Bich",
     "email": "bich@travix-media.de"
+  },
+  "info": {
+    "companyName": "Marcel Bich",
+    "productName": "Dogma",
+    "productVersion": "0.1.0"
   }
 }
