@@ -48,11 +48,11 @@ type AssistantMessage struct {
 // ContentBlock represents a single content block in an assistant message.
 // The Type field determines which optional fields are populated.
 type ContentBlock struct {
-	Type     string `json:"type"`
-	Text     string `json:"text,omitempty"`
-	Thinking string `json:"thinking,omitempty"`
-	Name     string `json:"name,omitempty"`
-	Input    string `json:"input,omitempty"`
+	Type     string          `json:"type"`
+	Text     string          `json:"text,omitempty"`
+	Thinking string          `json:"thinking,omitempty"`
+	Name     string          `json:"name,omitempty"`
+	Input    json.RawMessage `json:"input,omitempty"`
 }
 
 // ResultEvent represents type="result" events (final completion).
