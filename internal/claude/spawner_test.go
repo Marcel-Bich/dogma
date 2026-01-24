@@ -370,6 +370,121 @@ func TestExecCmd_Signal_NoProcess(t *testing.T) {
 	}
 }
 
+// argsCapturingFactory returns a CmdFactory that records captured args and returns the given mock.
+func argsCapturingFactory(mock *mockCmd, captured *[]string) CmdFactory {
+	return func(ctx context.Context, name string, args ...string) Cmd {
+		*captured = append([]string{name}, args...)
+		return mock
+	}
+}
+
+func TestSendPromptContinue_Args(t *testing.T) {
+	mock := &mockCmd{
+		stdout: io.NopCloser(bytes.NewBufferString("")),
+	}
+
+	var captured []string
+	s := &Spawner{
+		config:     SpawnerConfig{ClaudePath: "claude"},
+		cmdFactory: argsCapturingFactory(mock, &captured),
+	}
+
+	err := s.SendPromptContinue(context.Background(), "what were we discussing?", func(ev StreamEvent) {})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify --continue flag is present
+	foundContinue := false
+	for _, arg := range captured {
+		if arg == "--continue" {
+			foundContinue = true
+			break
+		}
+	}
+	if !foundContinue {
+		t.Errorf("expected --continue flag in args, got: %v", captured)
+	}
+
+	// Verify prompt is last argument
+	if len(captured) == 0 {
+		t.Fatal("no args captured")
+	}
+	lastArg := captured[len(captured)-1]
+	if lastArg != "what were we discussing?" {
+		t.Errorf("expected prompt as last arg, got %q", lastArg)
+	}
+
+	// Verify standard flags are present
+	requiredFlags := []string{"-p", "--output-format", "stream-json", "--verbose"}
+	for _, flag := range requiredFlags {
+		found := false
+		for _, arg := range captured {
+			if arg == flag {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected %q flag in args, got: %v", flag, captured)
+		}
+	}
+}
+
+func TestSendPromptContinue_StreamsEvents(t *testing.T) {
+	ndjson := `{"type":"system","subtype":"init","session_id":"continued-sess"}` + "\n" +
+		`{"type":"result","result":"done","session_id":"continued-sess"}` + "\n"
+
+	mock := &mockCmd{
+		stdout: io.NopCloser(bytes.NewBufferString(ndjson)),
+	}
+
+	s := &Spawner{
+		config:     SpawnerConfig{ClaudePath: "claude"},
+		cmdFactory: newMockFactory(mock),
+	}
+
+	var events []StreamEvent
+	handler := func(ev StreamEvent) {
+		events = append(events, ev)
+	}
+
+	err := s.SendPromptContinue(context.Background(), "continue", handler)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+	if events[0].Type != "system" {
+		t.Errorf("expected first event type=system, got %q", events[0].Type)
+	}
+	if events[1].Type != "result" {
+		t.Errorf("expected second event type=result, got %q", events[1].Type)
+	}
+}
+
+func TestSendPromptContinue_WaitError(t *testing.T) {
+	mock := &mockCmd{
+		stdout:  io.NopCloser(bytes.NewBufferString("")),
+		waitErr: errors.New("exit status 1"),
+	}
+
+	s := &Spawner{
+		config:     SpawnerConfig{ClaudePath: "claude"},
+		cmdFactory: newMockFactory(mock),
+	}
+
+	err := s.SendPromptContinue(context.Background(), "hello", func(ev StreamEvent) {})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "claude exited") {
+		t.Errorf("expected error to contain 'claude exited', got: %v", err)
+	}
+}
+
 func TestExecCmd_Signal_WithProcess(t *testing.T) {
 	// Start a process that waits, then signal it
 	cmd := defaultCmdFactory(context.Background(), "sleep", "10")
