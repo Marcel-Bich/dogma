@@ -15,7 +15,7 @@ describe('MessageList', () => {
       const { getByText } = render(
         <MessageList messages={[]} loading={false} />
       )
-      expect(getByText('Send a prompt to start')).toBeTruthy()
+      expect(getByText('Awaiting commands')).toBeTruthy()
     })
 
     it('shows DOGMA branding in empty state pulse ring', () => {
@@ -54,7 +54,7 @@ describe('MessageList', () => {
       const { queryByText } = render(
         <MessageList messages={messages} loading={false} />
       )
-      expect(queryByText('Send a prompt to start')).toBeNull()
+      expect(queryByText('Awaiting commands')).toBeNull()
     })
   })
 

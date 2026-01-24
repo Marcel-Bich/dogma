@@ -102,12 +102,12 @@ export function App() {
       <div class="flex flex-1 overflow-hidden">
         <div
           data-testid="sessions-panel"
-          class={`overflow-y-auto bg-black border-r transition-all duration-200 ease-in-out ${showSessions ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}
+          class={`overflow-y-auto bg-black border-r transition-all duration-200 ease-in-out ${showSessions ? 'absolute sm:relative inset-y-0 left-0 sm:inset-auto w-[85vw] sm:w-64 z-20 sm:z-auto opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}
           style={{ borderColor: 'var(--arctic-border)' }}
         >
           <SessionList onSelect={handleSelectSession} selectedId={sessionId.value || undefined} listFn={backend.listSessions} />
         </div>
-        <div class="flex flex-col flex-1">
+        <div data-testid="main-content" class="flex flex-col flex-1" onClick={() => { if (showSessions) setShowSessions(false) }}>
           <div class="flex-1 overflow-y-auto">
             <MessageList messages={messages.value} loading={loading.value} />
           </div>
@@ -124,6 +124,13 @@ export function App() {
           />
         </div>
       </div>
+      {settingsOpen.value && (
+        <div
+          data-testid="settings-backdrop"
+          class="fixed inset-0 z-30"
+          onClick={() => setSettingsOpen(false)}
+        />
+      )}
       <SettingsPanel
         open={settingsOpen.value}
         onClose={() => setSettingsOpen(false)}

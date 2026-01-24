@@ -73,7 +73,7 @@ describe('App', () => {
 
     it('renders MessageList component', () => {
       const { getByText } = render(<App />)
-      expect(getByText('Send a prompt to start')).toBeTruthy()
+      expect(getByText('Awaiting commands')).toBeTruthy()
     })
 
     it('has flex-col h-screen layout', () => {
@@ -348,7 +348,7 @@ describe('App', () => {
       fireEvent.click(menuBtn)
       fireEvent.click(getByText('Sessions'))
       const panel = getByTestId('sessions-panel')
-      expect(panel.className).toContain('w-64')
+      expect(panel.className).toContain('sm:w-64')
       expect(panel.className).toContain('opacity-100')
     })
 
@@ -358,7 +358,7 @@ describe('App', () => {
       fireEvent.click(getByRole('button', { name: 'Menu' }))
       fireEvent.click(getByText('Sessions'))
       const panel = getByTestId('sessions-panel')
-      expect(panel.className).toContain('w-64')
+      expect(panel.className).toContain('sm:w-64')
       // Close sessions
       fireEvent.click(getByRole('button', { name: 'Menu' }))
       fireEvent.click(getByText('Sessions'))
@@ -372,6 +372,21 @@ describe('App', () => {
       expect(panel.className).toContain('transition-all')
       expect(panel.className).toContain('duration-200')
       expect(panel.className).toContain('ease-in-out')
+    })
+
+    it('sessions panel uses responsive width classes when open', () => {
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Sessions'))
+      const panel = getByTestId('sessions-panel')
+      // Mobile: 85vw width, absolute positioning, z-index
+      expect(panel.className).toContain('w-[85vw]')
+      expect(panel.className).toContain('absolute')
+      expect(panel.className).toContain('z-20')
+      // Desktop: relative positioning, fixed 256px width
+      expect(panel.className).toContain('sm:w-64')
+      expect(panel.className).toContain('sm:relative')
+      expect(panel.className).toContain('sm:z-auto')
     })
 
     it('SessionList receives current sessionId as selectedId', () => {
@@ -396,6 +411,38 @@ describe('App', () => {
       render(<App />)
       expect(loadSessionsSpy).toHaveBeenCalledWith(mockBackend.listSessions)
       loadSessionsSpy.mockRestore()
+    })
+
+    it('clicking main content area closes sessions panel', () => {
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      // Open sessions panel
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Sessions'))
+      const panel = getByTestId('sessions-panel')
+      expect(panel.className).toContain('opacity-100')
+      // Click main content area
+      fireEvent.click(getByTestId('main-content'))
+      expect(panel.className).toContain('w-0')
+      expect(panel.className).toContain('opacity-0')
+    })
+  })
+
+  describe('click-outside behavior', () => {
+    it('clicking backdrop closes settings panel', () => {
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      // Open settings
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Settings'))
+      const panel = getByTestId('settings-panel')
+      expect((panel as HTMLElement).style.transform).toBe('translateX(0)')
+      // Click backdrop
+      fireEvent.click(getByTestId('settings-backdrop'))
+      expect((panel as HTMLElement).style.transform).toBe('translateX(100%)')
+    })
+
+    it('backdrop is not rendered when settings panel is closed', () => {
+      const { queryByTestId } = render(<App />)
+      expect(queryByTestId('settings-backdrop')).toBeNull()
     })
   })
 })
