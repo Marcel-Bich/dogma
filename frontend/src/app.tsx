@@ -1,6 +1,6 @@
 import { useEffect } from 'preact/hooks'
 import { EventsOn } from '../wailsjs/runtime/runtime'
-import { SendPrompt, CancelPrompt } from '../wailsjs/go/main/App'
+import { SendPrompt, ContinuePrompt, CancelPrompt } from '../wailsjs/go/main/App'
 import { ChatInput } from './components/ChatInput'
 import { MessageList } from './components/MessageList'
 import {
@@ -41,6 +41,12 @@ export function App() {
     SendPrompt(text)
   }
 
+  function handleContinue(text: string) {
+    setLoading(true)
+    setError(null)
+    ContinuePrompt(text)
+  }
+
   function handleCancel() {
     CancelPrompt()
   }
@@ -57,6 +63,7 @@ export function App() {
       )}
       <ChatInput
         onSend={handleSend}
+        onContinue={handleContinue}
         onCancel={handleCancel}
         loading={loading.value}
       />

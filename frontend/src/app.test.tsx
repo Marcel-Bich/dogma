@@ -5,10 +5,12 @@ import * as state from './state'
 
 // Mock Wails bindings
 const mockSendPrompt = vi.fn().mockResolvedValue(undefined)
+const mockContinuePrompt = vi.fn().mockResolvedValue(undefined)
 const mockCancelPrompt = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../wailsjs/go/main/App', () => ({
   SendPrompt: (...args: unknown[]) => mockSendPrompt(...args),
+  ContinuePrompt: (...args: unknown[]) => mockContinuePrompt(...args),
   CancelPrompt: (...args: unknown[]) => mockCancelPrompt(...args),
 }))
 
@@ -159,6 +161,42 @@ describe('App', () => {
 
       const sendButton = getByRole('button', { name: /send/i })
       fireEvent.click(sendButton)
+
+      expect(state.error.value).toBeNull()
+    })
+  })
+
+  describe('continue handler', () => {
+    it('calls ContinuePrompt with text when continue is triggered', () => {
+      const { getByPlaceholderText, getByRole } = render(<App />)
+      const textarea = getByPlaceholderText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'resume work' } })
+
+      const continueButton = getByRole('button', { name: /continue session/i })
+      fireEvent.click(continueButton)
+
+      expect(mockContinuePrompt).toHaveBeenCalledWith('resume work')
+    })
+
+    it('sets loading=true when continue is triggered', () => {
+      const { getByPlaceholderText, getByRole } = render(<App />)
+      const textarea = getByPlaceholderText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+
+      const continueButton = getByRole('button', { name: /continue session/i })
+      fireEvent.click(continueButton)
+
+      expect(state.loading.value).toBe(true)
+    })
+
+    it('clears error when continue is triggered', () => {
+      state.setError('previous error')
+      const { getByPlaceholderText, getByRole } = render(<App />)
+      const textarea = getByPlaceholderText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+
+      const continueButton = getByRole('button', { name: /continue session/i })
+      fireEvent.click(continueButton)
 
       expect(state.error.value).toBeNull()
     })
