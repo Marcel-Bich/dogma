@@ -83,6 +83,12 @@ func (s *Spawner) SendPromptWithSession(ctx context.Context, prompt string, sess
 	return s.run(ctx, args, handler)
 }
 
+// SendPromptContinue resumes the most recent session in the configured working directory.
+func (s *Spawner) SendPromptContinue(ctx context.Context, prompt string, handler EventHandler) error {
+	args := []string{"-p", "--output-format", "stream-json", "--verbose", "--continue", prompt}
+	return s.run(ctx, args, handler)
+}
+
 // Cancel sends SIGTERM to the running claude process, if any.
 func (s *Spawner) Cancel() {
 	s.mu.Lock()
