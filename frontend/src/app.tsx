@@ -1,7 +1,6 @@
-import { useEffect } from 'preact/hooks'
+import { useEffect, useMemo } from 'preact/hooks'
 import { useState } from 'preact/hooks'
-import { EventsOn } from '../wailsjs/runtime/runtime'
-import { SendPrompt, ContinuePrompt, CancelPrompt } from '../wailsjs/go/main/App'
+import { createBackend } from './backend'
 import { ChatInput } from './components/ChatInput'
 import { MessageList } from './components/MessageList'
 import { SessionList } from './components/SessionList'
@@ -18,42 +17,37 @@ import type { BridgeEvent } from './types'
 
 export function App() {
   const [showSessions, setShowSessions] = useState(false)
+  const backend = useMemo(() => createBackend(), [])
 
   useEffect(() => {
-    const unsubEvent = EventsOn('claude:event', (event: BridgeEvent) => {
-      handleBridgeEvent(event)
+    const unsub = backend.onEvent((event: BridgeEvent) => {
+      if (event.type === 'result' && !event.is_error) {
+        setLoading(false)
+      } else if (event.type === 'result' && event.is_error) {
+        setError(event.result || 'Unknown error')
+        setLoading(false)
+      } else {
+        handleBridgeEvent(event)
+      }
     })
 
-    const unsubDone = EventsOn('claude:done', () => {
-      setLoading(false)
-    })
-
-    const unsubError = EventsOn('claude:error', (msg: string) => {
-      setError(msg)
-      setLoading(false)
-    })
-
-    return () => {
-      unsubEvent()
-      unsubDone()
-      unsubError()
-    }
-  }, [])
+    return unsub
+  }, [backend])
 
   function handleSend(text: string) {
     setLoading(true)
     setError(null)
-    SendPrompt(text)
+    backend.sendPrompt(text)
   }
 
   function handleContinue(text: string) {
     setLoading(true)
     setError(null)
-    ContinuePrompt(text)
+    backend.continuePrompt(text)
   }
 
   function handleCancel() {
-    CancelPrompt()
+    backend.cancelPrompt()
   }
 
   function handleSelectSession(id: string) {
