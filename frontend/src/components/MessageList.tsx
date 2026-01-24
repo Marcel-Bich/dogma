@@ -40,7 +40,7 @@ export function MessageList({ messages, loading }: Props) {
               }}
             />
           </div>
-          <span class="text-xs" style={{ color: '#4a6a7a' }}>
+          <span class="text-xs" style={{ color: 'var(--arctic-dim)' }}>
             Send a prompt to start
           </span>
         </div>
