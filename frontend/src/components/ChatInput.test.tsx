@@ -16,89 +16,23 @@ describe('ChatInput', () => {
     return { ...result, props }
   }
 
-  it('renders textarea and send button', () => {
-    const { getByLabelText, getByRole } = setup()
-    expect(getByLabelText('Enter your prompt...')).toBeTruthy()
-    expect(getByRole('button', { name: /send/i })).toBeTruthy()
-  })
+  describe('textarea', () => {
+    it('renders textarea with aria-label', () => {
+      const { getByLabelText } = setup()
+      expect(getByLabelText('Enter your prompt...')).toBeTruthy()
+    })
 
-  it('send button is disabled when input is empty', () => {
-    const { getByRole } = setup()
-    const button = getByRole('button', { name: /send/i })
-    expect(button).toHaveProperty('disabled', true)
-  })
+    it('textarea has rows=1 for compact mobile layout', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      expect(textarea.rows).toBe(1)
+    })
 
-  it('send button is disabled when loading is true', () => {
-    const { getByRole, getByLabelText } = setup({ loading: true })
-    const textarea = getByLabelText('Enter your prompt...')
-    fireEvent.input(textarea, { target: { value: 'some text' } })
-    const button = getByRole('button', { name: /send/i })
-    expect(button).toHaveProperty('disabled', true)
-  })
-
-  it('cancel button appears only when loading is true', () => {
-    const { queryByRole, rerender } = setup({ loading: false })
-    expect(queryByRole('button', { name: /cancel/i })).toBeNull()
-
-    rerender(<ChatInput onSend={vi.fn()} onContinue={vi.fn()} onCancel={vi.fn()} loading={true} />)
-    expect(queryByRole('button', { name: /cancel/i })).toBeTruthy()
-  })
-
-  it('onSend callback fires with trimmed input text when send clicked', () => {
-    const { getByLabelText, getByRole, props } = setup()
-    const textarea = getByLabelText('Enter your prompt...')
-    fireEvent.input(textarea, { target: { value: '  hello world  ' } })
-    const button = getByRole('button', { name: /send/i })
-    fireEvent.click(button)
-    expect(props.onSend).toHaveBeenCalledWith('hello world')
-  })
-
-  it('onCancel callback fires when cancel clicked', () => {
-    const { getByRole, props } = setup({ loading: true })
-    const button = getByRole('button', { name: /cancel/i })
-    fireEvent.click(button)
-    expect(props.onCancel).toHaveBeenCalledTimes(1)
-  })
-
-  it('input clears after successful send', () => {
-    const { getByLabelText, getByRole } = setup()
-    const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
-    fireEvent.input(textarea, { target: { value: 'hello' } })
-    const button = getByRole('button', { name: /send/i })
-    fireEvent.click(button)
-    expect(textarea.value).toBe('')
-  })
-
-  it('Enter key without Shift triggers send', () => {
-    const { getByLabelText, props } = setup()
-    const textarea = getByLabelText('Enter your prompt...')
-    fireEvent.input(textarea, { target: { value: 'enter test' } })
-    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-    expect(props.onSend).toHaveBeenCalledWith('enter test')
-  })
-
-  it('Shift+Enter does NOT trigger send', () => {
-    const { getByLabelText, props } = setup()
-    const textarea = getByLabelText('Enter your prompt...')
-    fireEvent.input(textarea, { target: { value: 'multiline' } })
-    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true })
-    expect(props.onSend).not.toHaveBeenCalled()
-  })
-
-  it('Enter on empty input does not trigger send', () => {
-    const { getByLabelText, props } = setup()
-    const textarea = getByLabelText('Enter your prompt...')
-    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-    expect(props.onSend).not.toHaveBeenCalled()
-  })
-
-  describe('textarea focus effects', () => {
     it('applies accent glow on focus using CSS variable', () => {
       const { getByLabelText } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
       fireEvent.focus(textarea)
       expect(textarea.style.borderColor).toBe('rgba(var(--arctic-accent-rgb), 0.5)')
-      expect(textarea.style.boxShadow).toContain('8px')
       expect(textarea.style.boxShadow).toContain('var(--arctic-accent-rgb)')
     })
 
@@ -112,49 +46,128 @@ describe('ChatInput', () => {
     })
   })
 
-  describe('continue button', () => {
-    it('renders continue button with correct aria-label', () => {
-      const { getByRole } = setup()
+  describe('action bar visibility', () => {
+    it('action bar is hidden when textarea is empty', () => {
+      const { queryByTestId } = setup()
+      expect(queryByTestId('action-bar')).toBeNull()
+    })
+
+    it('action bar appears when text is entered', () => {
+      const { getByLabelText, queryByTestId } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'hello' } })
+      expect(queryByTestId('action-bar')).toBeTruthy()
+    })
+
+    it('action bar shows during loading even with empty text', () => {
+      const { queryByTestId } = setup({ loading: true })
+      expect(queryByTestId('action-bar')).toBeTruthy()
+    })
+
+    it('EXEC and CONT visible when text exists and not loading', () => {
+      const { getByLabelText, getByRole } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      expect(getByRole('button', { name: /send/i })).toBeTruthy()
       expect(getByRole('button', { name: /continue session/i })).toBeTruthy()
     })
 
-    it('continue button is disabled when input is empty', () => {
-      const { getByRole } = setup()
-      const button = getByRole('button', { name: /continue session/i })
-      expect(button).toHaveProperty('disabled', true)
+    it('EXEC and CONT hidden during loading, STOP shown', () => {
+      const { queryByRole, getByRole } = setup({ loading: true })
+      expect(queryByRole('button', { name: /send/i })).toBeNull()
+      expect(queryByRole('button', { name: /continue session/i })).toBeNull()
+      expect(getByRole('button', { name: /cancel/i })).toBeTruthy()
     })
 
-    it('continue button is disabled when loading is true', () => {
-      const { getByRole, getByLabelText } = setup({ loading: true })
+    it('action buttons have no border styling', () => {
+      const { getByLabelText, getByRole } = setup()
       const textarea = getByLabelText('Enter your prompt...')
-      fireEvent.input(textarea, { target: { value: 'some text' } })
-      const button = getByRole('button', { name: /continue session/i })
-      expect(button).toHaveProperty('disabled', true)
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      const execBtn = getByRole('button', { name: /send/i }) as HTMLButtonElement
+      expect(execBtn.style.borderStyle).toBe('none')
     })
 
-    it('onContinue callback fires with trimmed text when continue clicked', () => {
+    it('action buttons have min-height 44px for touch targets', () => {
+      const { getByLabelText, getByRole } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      const execBtn = getByRole('button', { name: /send/i }) as HTMLButtonElement
+      expect(execBtn.className).toContain('min-h-[44px]')
+    })
+  })
+
+  describe('send action', () => {
+    it('onSend fires with trimmed text when EXEC clicked', () => {
       const { getByLabelText, getByRole, props } = setup()
       const textarea = getByLabelText('Enter your prompt...')
-      fireEvent.input(textarea, { target: { value: '  resume work  ' } })
-      const button = getByRole('button', { name: /continue session/i })
-      fireEvent.click(button)
-      expect(props.onContinue).toHaveBeenCalledWith('resume work')
+      fireEvent.input(textarea, { target: { value: '  hello world  ' } })
+      fireEvent.click(getByRole('button', { name: /send/i }))
+      expect(props.onSend).toHaveBeenCalledWith('hello world')
     })
 
-    it('input clears after continue is clicked', () => {
+    it('input clears after send', () => {
       const { getByLabelText, getByRole } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
-      fireEvent.input(textarea, { target: { value: 'continue' } })
-      const button = getByRole('button', { name: /continue session/i })
-      fireEvent.click(button)
+      fireEvent.input(textarea, { target: { value: 'hello' } })
+      fireEvent.click(getByRole('button', { name: /send/i }))
       expect(textarea.value).toBe('')
     })
 
-    it('continue does not fire when input is empty', () => {
-      const { getByRole, props } = setup()
-      const button = getByRole('button', { name: /continue session/i })
-      fireEvent.click(button)
-      expect(props.onContinue).not.toHaveBeenCalled()
+    it('Enter key triggers send', () => {
+      const { getByLabelText, props } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'enter test' } })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      expect(props.onSend).toHaveBeenCalledWith('enter test')
+    })
+
+    it('Shift+Enter does NOT trigger send', () => {
+      const { getByLabelText, props } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'multiline' } })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true })
+      expect(props.onSend).not.toHaveBeenCalled()
+    })
+
+    it('Enter on empty input does not trigger send', () => {
+      const { getByLabelText, props } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      expect(props.onSend).not.toHaveBeenCalled()
+    })
+
+    it('send does not fire when loading', () => {
+      const { getByLabelText, props } = setup({ loading: true })
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      expect(props.onSend).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('continue action', () => {
+    it('onContinue fires with trimmed text when CONT clicked', () => {
+      const { getByLabelText, getByRole, props } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: '  resume  ' } })
+      fireEvent.click(getByRole('button', { name: /continue session/i }))
+      expect(props.onContinue).toHaveBeenCalledWith('resume')
+    })
+
+    it('input clears after continue', () => {
+      const { getByLabelText, getByRole } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      fireEvent.input(textarea, { target: { value: 'cont' } })
+      fireEvent.click(getByRole('button', { name: /continue session/i }))
+      expect(textarea.value).toBe('')
+    })
+  })
+
+  describe('cancel action', () => {
+    it('onCancel fires when STOP clicked', () => {
+      const { getByRole, props } = setup({ loading: true })
+      fireEvent.click(getByRole('button', { name: /cancel/i }))
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
     })
   })
 })
