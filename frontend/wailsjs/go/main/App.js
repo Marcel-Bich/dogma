@@ -10,6 +10,10 @@ export function CancelPrompt() {
   return window['go']['main']['App']['CancelPrompt']();
 }
 
+export function ContinuePrompt(arg1) {
+  return window['go']['main']['App']['ContinuePrompt'](arg1);
+}
+
 export function SendPrompt(arg1) {
   return window['go']['main']['App']['SendPrompt'](arg1);
 }

@@ -5,6 +5,8 @@ export function ApplyUpdate():Promise<void>;
 
 export function CancelPrompt():Promise<void>;
 
+export function ContinuePrompt(arg1:string):Promise<void>;
+
 export function SendPrompt(arg1:string):Promise<void>;
 
 export function SendPromptWithSession(arg1:string,arg2:string):Promise<void>;
