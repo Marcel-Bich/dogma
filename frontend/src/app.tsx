@@ -56,7 +56,7 @@ export function App() {
 
   return (
     <div class="flex flex-col h-screen bg-gray-900">
-      <div class="flex items-center justify-between px-3 py-2 bg-gray-800 border-b border-gray-700">
+      <div class="relative z-10 flex items-center justify-between px-3 py-2 bg-gradient-to-b from-gray-800 to-gray-800/95 shadow-md">
         <span class="text-sm font-semibold tracking-wide text-gray-300 select-none">DOGMA</span>
         <button
           type="button"
@@ -68,11 +68,12 @@ export function App() {
         </button>
       </div>
       <div class="flex flex-1 overflow-hidden">
-        {showSessions && (
-          <div data-testid="sessions-panel" class="w-64 border-r border-gray-700 overflow-y-auto bg-gray-850">
-            <SessionList onSelect={handleSelectSession} selectedId={sessionId.value || undefined} listFn={backend.listSessions} />
-          </div>
-        )}
+        <div
+          data-testid="sessions-panel"
+          class={`overflow-y-auto bg-gray-850 border-r border-gray-700 transition-all duration-200 ease-in-out ${showSessions ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}
+        >
+          <SessionList onSelect={handleSelectSession} selectedId={sessionId.value || undefined} listFn={backend.listSessions} />
+        </div>
         <div class="flex flex-col flex-1">
           <div class="flex-1 overflow-y-auto">
             <MessageList messages={messages.value} loading={loading.value} />

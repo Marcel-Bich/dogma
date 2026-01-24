@@ -74,6 +74,15 @@ describe('App', () => {
       const header = title.parentElement as HTMLElement
       expect(header.className).toContain('justify-between')
     })
+
+    it('header has shadow and gradient for visual depth', () => {
+      const { getByText } = render(<App />)
+      const title = getByText('DOGMA')
+      const header = title.parentElement as HTMLElement
+      expect(header.className).toContain('shadow-md')
+      expect(header.className).toContain('bg-gradient-to-b')
+      expect(header.className).toContain('z-10')
+    })
   })
 
   describe('backend event listener', () => {
@@ -234,33 +243,45 @@ describe('App', () => {
   })
 
   describe('session panel', () => {
-    it('sessions panel is not visible by default', () => {
-      const { queryByTestId } = render(<App />)
-      expect(queryByTestId('sessions-panel')).toBeNull()
+    it('sessions panel is collapsed by default', () => {
+      const { getByTestId } = render(<App />)
+      const panel = getByTestId('sessions-panel')
+      expect(panel.className).toContain('w-0')
+      expect(panel.className).toContain('opacity-0')
     })
 
-    it('toggle button shows sessions panel', () => {
-      const { getByRole, queryByTestId } = render(<App />)
+    it('toggle button expands sessions panel', () => {
+      const { getByRole, getByTestId } = render(<App />)
       const toggleBtn = getByRole('button', { name: /toggle sessions/i })
       fireEvent.click(toggleBtn)
-      expect(queryByTestId('sessions-panel')).toBeTruthy()
+      const panel = getByTestId('sessions-panel')
+      expect(panel.className).toContain('w-64')
+      expect(panel.className).toContain('opacity-100')
     })
 
-    it('toggle button hides sessions panel on second click', () => {
-      const { getByRole, queryByTestId } = render(<App />)
+    it('toggle button collapses sessions panel on second click', () => {
+      const { getByRole, getByTestId } = render(<App />)
       const toggleBtn = getByRole('button', { name: /toggle sessions/i })
       fireEvent.click(toggleBtn)
-      expect(queryByTestId('sessions-panel')).toBeTruthy()
+      const panel = getByTestId('sessions-panel')
+      expect(panel.className).toContain('w-64')
       fireEvent.click(toggleBtn)
-      expect(queryByTestId('sessions-panel')).toBeNull()
+      expect(panel.className).toContain('w-0')
+      expect(panel.className).toContain('opacity-0')
+    })
+
+    it('sessions panel has transition classes for smooth animation', () => {
+      const { getByTestId } = render(<App />)
+      const panel = getByTestId('sessions-panel')
+      expect(panel.className).toContain('transition-all')
+      expect(panel.className).toContain('duration-200')
+      expect(panel.className).toContain('ease-in-out')
     })
 
     it('SessionList receives current sessionId as selectedId', () => {
       state.sessionId.value = 'test-session-id'
       state.sessions.value = [{ id: 'test-session-id', summary: 'Test', first_message: '', timestamp: '2026-01-24T10:00:00Z', model: 'opus' }]
-      const { getByRole, getByTestId } = render(<App />)
-      const toggleBtn = getByRole('button', { name: /toggle sessions/i })
-      fireEvent.click(toggleBtn)
+      const { getByTestId } = render(<App />)
       const sessionItem = getByTestId('session-item-test-session-id')
       expect(sessionItem.className).toContain('border-blue-500')
     })
@@ -268,9 +289,7 @@ describe('App', () => {
     it('clicking a session item calls handleSelectSession', () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
       state.sessions.value = [{ id: 'click-session', summary: 'Click me', first_message: '', timestamp: '2026-01-24T10:00:00Z', model: 'opus' }]
-      const { getByRole, getByTestId } = render(<App />)
-      const toggleBtn = getByRole('button', { name: /toggle sessions/i })
-      fireEvent.click(toggleBtn)
+      const { getByTestId } = render(<App />)
       fireEvent.click(getByTestId('session-item-click-session'))
       expect(consoleSpy).toHaveBeenCalledWith('Selected session:', 'click-session')
       consoleSpy.mockRestore()
@@ -278,9 +297,7 @@ describe('App', () => {
 
     it('passes backend.listSessions as listFn to SessionList', () => {
       const loadSessionsSpy = vi.spyOn(state, 'loadSessions').mockResolvedValue(undefined)
-      const { getByRole } = render(<App />)
-      const toggleBtn = getByRole('button', { name: /toggle sessions/i })
-      fireEvent.click(toggleBtn)
+      render(<App />)
       expect(loadSessionsSpy).toHaveBeenCalledWith(mockBackend.listSessions)
       loadSessionsSpy.mockRestore()
     })
