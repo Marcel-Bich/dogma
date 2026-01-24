@@ -1,1 +1,87 @@
 @import 'tailwindcss';
+
+:root {
+  --arctic-black: #000000;
+  --arctic-cyan: #22d3ee;
+  --arctic-cyan-dark: #06b6d4;
+  --arctic-cyan-light: #67e8f9;
+  --arctic-border: #0e4f5c;
+  --arctic-text: #c8c8d8;
+  --arctic-dim: #4a6a7a;
+  --arctic-message: #e0f0ff;
+  --arctic-thinking: #4a8a94;
+  --arctic-error: #f87171;
+}
+
+* {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--arctic-black);
+  color: var(--arctic-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pulse ring animation for empty state */
+@keyframes pulse-ring {
+  0%, 100% { transform: scale(0.9); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+@keyframes pulse-ring-fast {
+  0%, 100% { transform: scale(0.9); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+/* Scan line animation */
+@keyframes scanline {
+  0% { top: -2px; }
+  100% { top: 100%; }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--arctic-black);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.4);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.2) var(--arctic-black);
+}
+
+/* Glass input effect */
+.glass-input {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Scan line overlay */
+.scanline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(34, 211, 238, 0.02);
+  animation: scanline 20s linear infinite;
+  pointer-events: none;
+}

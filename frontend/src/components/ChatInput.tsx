@@ -33,42 +33,63 @@ export function ChatInput({ onSend, onContinue, onCancel, loading }: ChatInputPr
   }
 
   return (
-    <div class="flex items-end gap-2 p-3 bg-gray-800 border-t border-gray-700">
+    <div class="flex items-end gap-3 p-3 bg-black border-t" style={{ borderColor: '#0e4f5c' }}>
+      <span class="pb-2 text-lg select-none" style={{ color: '#22d3ee' }}>&gt;</span>
       <textarea
-        class="flex-1 resize-none rounded-lg bg-gray-900 text-white placeholder-gray-400 p-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
-        placeholder="Enter your prompt..."
+        class="flex-1 resize-none p-2 border text-sm glass-input focus:outline-none transition-all duration-200"
+        style={{
+          background: '#000',
+          color: '#e0f0ff',
+          borderColor: 'rgba(34,211,238,0.2)',
+          borderRadius: '2px',
+        }}
+        onFocus={(e) => {
+          const t = e.target as HTMLTextAreaElement
+          t.style.borderColor = 'rgba(34,211,238,0.5)'
+          t.style.boxShadow = '0 0 8px rgba(34,211,238,0.3)'
+        }}
+        onBlur={(e) => {
+          const t = e.target as HTMLTextAreaElement
+          t.style.borderColor = 'rgba(34,211,238,0.2)'
+          t.style.boxShadow = 'none'
+        }}
+        placeholder="..."
+        aria-label="Enter your prompt..."
         value={text}
         onInput={(e) => setText((e.target as HTMLTextAreaElement).value)}
         onKeyDown={handleKeyDown}
         rows={3}
       />
-      <div class="flex flex-col gap-1">
+      <div class="flex flex-row gap-2 pb-0.5">
         <button
           type="button"
           aria-label="Send"
           disabled={!canSend}
           onClick={handleSend}
-          class="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-500 transition-colors"
+          class="px-3 py-1.5 text-xs uppercase tracking-wider border transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ color: '#22d3ee', borderColor: '#22d3ee', background: 'transparent' }}
         >
-          Send
+          EXEC
         </button>
         <button
           type="button"
           aria-label="Continue session"
           disabled={!canSend}
           onClick={handleContinue}
-          class="px-4 py-2 rounded-lg bg-green-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-500 transition-colors"
+          class="px-3 py-1.5 text-xs uppercase tracking-wider border transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ color: '#666', borderColor: '#333', background: 'transparent' }}
         >
-          Continue
+          CONT
         </button>
         {loading && (
           <button
             type="button"
             aria-label="Cancel"
             onClick={onCancel}
-            class="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-500 transition-colors"
+            class="px-3 py-1.5 text-xs uppercase tracking-wider border transition-all duration-200"
+            style={{ color: '#f87171', borderColor: '#f87171', background: 'transparent' }}
           >
-            Cancel
+            STOP
           </button>
         )}
       </div>

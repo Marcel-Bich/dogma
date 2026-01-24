@@ -17,8 +17,8 @@ describe('ChatInput', () => {
   }
 
   it('renders textarea and send button', () => {
-    const { getByPlaceholderText, getByRole } = setup()
-    expect(getByPlaceholderText('Enter your prompt...')).toBeTruthy()
+    const { getByLabelText, getByRole } = setup()
+    expect(getByLabelText('Enter your prompt...')).toBeTruthy()
     expect(getByRole('button', { name: /send/i })).toBeTruthy()
   })
 
@@ -29,8 +29,8 @@ describe('ChatInput', () => {
   })
 
   it('send button is disabled when loading is true', () => {
-    const { getByRole, getByPlaceholderText } = setup({ loading: true })
-    const textarea = getByPlaceholderText('Enter your prompt...')
+    const { getByRole, getByLabelText } = setup({ loading: true })
+    const textarea = getByLabelText('Enter your prompt...')
     fireEvent.input(textarea, { target: { value: 'some text' } })
     const button = getByRole('button', { name: /send/i })
     expect(button).toHaveProperty('disabled', true)
@@ -45,8 +45,8 @@ describe('ChatInput', () => {
   })
 
   it('onSend callback fires with trimmed input text when send clicked', () => {
-    const { getByPlaceholderText, getByRole, props } = setup()
-    const textarea = getByPlaceholderText('Enter your prompt...')
+    const { getByLabelText, getByRole, props } = setup()
+    const textarea = getByLabelText('Enter your prompt...')
     fireEvent.input(textarea, { target: { value: '  hello world  ' } })
     const button = getByRole('button', { name: /send/i })
     fireEvent.click(button)
@@ -61,8 +61,8 @@ describe('ChatInput', () => {
   })
 
   it('input clears after successful send', () => {
-    const { getByPlaceholderText, getByRole } = setup()
-    const textarea = getByPlaceholderText('Enter your prompt...') as HTMLTextAreaElement
+    const { getByLabelText, getByRole } = setup()
+    const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
     fireEvent.input(textarea, { target: { value: 'hello' } })
     const button = getByRole('button', { name: /send/i })
     fireEvent.click(button)
@@ -70,26 +70,49 @@ describe('ChatInput', () => {
   })
 
   it('Enter key without Shift triggers send', () => {
-    const { getByPlaceholderText, props } = setup()
-    const textarea = getByPlaceholderText('Enter your prompt...')
+    const { getByLabelText, props } = setup()
+    const textarea = getByLabelText('Enter your prompt...')
     fireEvent.input(textarea, { target: { value: 'enter test' } })
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
     expect(props.onSend).toHaveBeenCalledWith('enter test')
   })
 
   it('Shift+Enter does NOT trigger send', () => {
-    const { getByPlaceholderText, props } = setup()
-    const textarea = getByPlaceholderText('Enter your prompt...')
+    const { getByLabelText, props } = setup()
+    const textarea = getByLabelText('Enter your prompt...')
     fireEvent.input(textarea, { target: { value: 'multiline' } })
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true })
     expect(props.onSend).not.toHaveBeenCalled()
   })
 
   it('Enter on empty input does not trigger send', () => {
-    const { getByPlaceholderText, props } = setup()
-    const textarea = getByPlaceholderText('Enter your prompt...')
+    const { getByLabelText, props } = setup()
+    const textarea = getByLabelText('Enter your prompt...')
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
     expect(props.onSend).not.toHaveBeenCalled()
+  })
+
+  describe('textarea focus effects', () => {
+    it('applies cyan glow on focus', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      fireEvent.focus(textarea)
+      expect(textarea.style.borderColor).toContain('34')
+      expect(textarea.style.borderColor).toContain('211')
+      expect(textarea.style.borderColor).toContain('238')
+      expect(textarea.style.boxShadow).toContain('8px')
+      expect(textarea.style.boxShadow).toContain('rgba')
+    })
+
+    it('removes glow on blur', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      fireEvent.focus(textarea)
+      fireEvent.blur(textarea)
+      expect(textarea.style.borderColor).toContain('34')
+      expect(textarea.style.borderColor).toContain('238')
+      expect(textarea.style.boxShadow).toBe('none')
+    })
   })
 
   describe('continue button', () => {
@@ -105,16 +128,16 @@ describe('ChatInput', () => {
     })
 
     it('continue button is disabled when loading is true', () => {
-      const { getByRole, getByPlaceholderText } = setup({ loading: true })
-      const textarea = getByPlaceholderText('Enter your prompt...')
+      const { getByRole, getByLabelText } = setup({ loading: true })
+      const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'some text' } })
       const button = getByRole('button', { name: /continue session/i })
       expect(button).toHaveProperty('disabled', true)
     })
 
     it('onContinue callback fires with trimmed text when continue clicked', () => {
-      const { getByPlaceholderText, getByRole, props } = setup()
-      const textarea = getByPlaceholderText('Enter your prompt...')
+      const { getByLabelText, getByRole, props } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: '  resume work  ' } })
       const button = getByRole('button', { name: /continue session/i })
       fireEvent.click(button)
@@ -122,8 +145,8 @@ describe('ChatInput', () => {
     })
 
     it('input clears after continue is clicked', () => {
-      const { getByPlaceholderText, getByRole } = setup()
-      const textarea = getByPlaceholderText('Enter your prompt...') as HTMLTextAreaElement
+      const { getByLabelText, getByRole } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
       fireEvent.input(textarea, { target: { value: 'continue' } })
       const button = getByRole('button', { name: /continue session/i })
       fireEvent.click(button)
