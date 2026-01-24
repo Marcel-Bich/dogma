@@ -12,7 +12,11 @@ vi.mock('../wailsjs/go/main/App', () => ({
   SendPrompt: (...args: unknown[]) => mockSendPrompt(...args),
   ContinuePrompt: (...args: unknown[]) => mockContinuePrompt(...args),
   CancelPrompt: (...args: unknown[]) => mockCancelPrompt(...args),
+  ListSessions: vi.fn().mockResolvedValue([]),
 }))
+
+// Mock loadSessions to prevent SessionList useEffect from interfering
+vi.spyOn(state, 'loadSessions').mockResolvedValue(undefined)
 
 // Track registered listeners and their cleanup functions
 type Listener = (...data: unknown[]) => void
@@ -224,6 +228,50 @@ describe('App', () => {
     it('does not render error when error state is null', () => {
       const { queryByTestId } = render(<App />)
       expect(queryByTestId('error-message')).toBeNull()
+    })
+  })
+
+  describe('session panel', () => {
+    it('sessions panel is not visible by default', () => {
+      const { queryByTestId } = render(<App />)
+      expect(queryByTestId('sessions-panel')).toBeNull()
+    })
+
+    it('toggle button shows sessions panel', () => {
+      const { getByRole, queryByTestId } = render(<App />)
+      const toggleBtn = getByRole('button', { name: /toggle sessions/i })
+      fireEvent.click(toggleBtn)
+      expect(queryByTestId('sessions-panel')).toBeTruthy()
+    })
+
+    it('toggle button hides sessions panel on second click', () => {
+      const { getByRole, queryByTestId } = render(<App />)
+      const toggleBtn = getByRole('button', { name: /toggle sessions/i })
+      fireEvent.click(toggleBtn)
+      expect(queryByTestId('sessions-panel')).toBeTruthy()
+      fireEvent.click(toggleBtn)
+      expect(queryByTestId('sessions-panel')).toBeNull()
+    })
+
+    it('SessionList receives current sessionId as selectedId', () => {
+      state.sessionId.value = 'test-session-id'
+      state.sessions.value = [{ id: 'test-session-id', summary: 'Test', first_message: '', timestamp: '2026-01-24T10:00:00Z', model: 'opus' }]
+      const { getByRole, getByTestId } = render(<App />)
+      const toggleBtn = getByRole('button', { name: /toggle sessions/i })
+      fireEvent.click(toggleBtn)
+      const sessionItem = getByTestId('session-item-test-session-id')
+      expect(sessionItem.className).toContain('border-blue-500')
+    })
+
+    it('clicking a session item calls handleSelectSession', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      state.sessions.value = [{ id: 'click-session', summary: 'Click me', first_message: '', timestamp: '2026-01-24T10:00:00Z', model: 'opus' }]
+      const { getByRole, getByTestId } = render(<App />)
+      const toggleBtn = getByRole('button', { name: /toggle sessions/i })
+      fireEvent.click(toggleBtn)
+      fireEvent.click(getByTestId('session-item-click-session'))
+      expect(consoleSpy).toHaveBeenCalledWith('Selected session:', 'click-session')
+      consoleSpy.mockRestore()
     })
   })
 })
