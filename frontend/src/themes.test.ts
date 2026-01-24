@@ -9,6 +9,7 @@ import {
   loadTheme,
   getThemeColors,
   applyTheme,
+  applyIntensity,
   type ThemeColors,
 } from './themes'
 
@@ -296,43 +297,60 @@ describe('themes', () => {
     describe('loadTheme', () => {
       it('returns default when localStorage is empty', () => {
         const result = loadTheme()
-        expect(result).toEqual({ presetId: 'arctic-pro', customAccent: null })
+        expect(result).toEqual({ presetId: 'arctic-pro', customAccent: null, intensity: 50 })
       })
 
       it('parses valid stored JSON', () => {
         localStorage.setItem(
           'dogma-theme',
-          JSON.stringify({ presetId: 'pulse', customAccent: '#ff0000' })
+          JSON.stringify({ presetId: 'pulse', customAccent: '#ff0000', intensity: 70 })
         )
         const result = loadTheme()
-        expect(result).toEqual({ presetId: 'pulse', customAccent: '#ff0000' })
+        expect(result).toEqual({ presetId: 'pulse', customAccent: '#ff0000', intensity: 70 })
       })
 
       it('returns default on malformed JSON', () => {
         localStorage.setItem('dogma-theme', 'not valid json{{{')
         const result = loadTheme()
-        expect(result).toEqual({ presetId: 'arctic-pro', customAccent: null })
+        expect(result).toEqual({ presetId: 'arctic-pro', customAccent: null, intensity: 50 })
+      })
+
+      it('returns default intensity when stored data lacks intensity field', () => {
+        localStorage.setItem(
+          'dogma-theme',
+          JSON.stringify({ presetId: 'pulse', customAccent: null })
+        )
+        const result = loadTheme()
+        expect(result.intensity).toBe(50)
       })
     })
 
     describe('saveTheme', () => {
-      it('stores correct JSON with key dogma-theme', () => {
-        saveTheme('ember', '#abcdef')
+      it('stores correct JSON with key dogma-theme including intensity', () => {
+        saveTheme('ember', '#abcdef', 65)
         const stored = localStorage.getItem('dogma-theme')
         expect(stored).not.toBeNull()
         expect(JSON.parse(stored!)).toEqual({
           presetId: 'ember',
           customAccent: '#abcdef',
+          intensity: 65,
         })
       })
 
       it('stores null customAccent correctly', () => {
-        saveTheme('arctic-pro', null)
+        saveTheme('arctic-pro', null, 50)
         const stored = localStorage.getItem('dogma-theme')
         expect(JSON.parse(stored!)).toEqual({
           presetId: 'arctic-pro',
           customAccent: null,
+          intensity: 50,
         })
+      })
+
+      it('stores intensity value', () => {
+        saveTheme('pulse', null, 80)
+        const stored = localStorage.getItem('dogma-theme')
+        expect(JSON.parse(stored!).intensity).toBe(80)
       })
     })
   })
@@ -408,6 +426,66 @@ describe('themes', () => {
       expect(style.getPropertyValue('--arctic-cyan')).toBe(colors2.accent)
       expect(style.getPropertyValue('--arctic-cyan-dark')).toBe(colors2.accentDark)
       expect(style.getPropertyValue('--arctic-accent-rgb')).toBe('0, 255, 0')
+    })
+  })
+
+  describe('applyIntensity', () => {
+    beforeEach(() => {
+      // Apply a theme so accent is set
+      const colors = deriveThemeColors('#22d3ee')
+      applyTheme(colors)
+    })
+
+    it('sets --arctic-dim CSS variable based on accent hue and intensity lightness', () => {
+      applyIntensity(60, '#22d3ee')
+      const style = document.documentElement.style
+      const dim = style.getPropertyValue('--arctic-dim')
+      expect(dim).toBeTruthy()
+      // Verify the resulting color has the correct lightness
+      const [, , l] = hexToHsl(dim)
+      expect(l).toBeCloseTo(60, 0)
+    })
+
+    it('uses accent hue with 20% saturation for dim color', () => {
+      applyIntensity(50, '#22d3ee')
+      const style = document.documentElement.style
+      const dim = style.getPropertyValue('--arctic-dim')
+      const [h, s] = hexToHsl(dim)
+      const [accentH] = hexToHsl('#22d3ee')
+      expect(h).toBeCloseTo(accentH, 0)
+      expect(s).toBeCloseTo(20, 0)
+    })
+
+    it('sets --arctic-brand-opacity to 0.4 at intensity 30', () => {
+      applyIntensity(30, '#22d3ee')
+      const style = document.documentElement.style
+      const opacity = style.getPropertyValue('--arctic-brand-opacity')
+      expect(opacity).toBe('0.4')
+    })
+
+    it('sets --arctic-brand-opacity to 0.9 at intensity 90', () => {
+      applyIntensity(90, '#22d3ee')
+      const style = document.documentElement.style
+      const opacity = style.getPropertyValue('--arctic-brand-opacity')
+      expect(opacity).toBe('0.9')
+    })
+
+    it('sets --arctic-brand-opacity linearly between 0.4 and 0.9', () => {
+      applyIntensity(60, '#22d3ee')
+      const style = document.documentElement.style
+      const opacity = parseFloat(style.getPropertyValue('--arctic-brand-opacity'))
+      // At 60: (60-30)/(90-30) * (0.9-0.4) + 0.4 = 0.5 * 0.5 + 0.4 = 0.65
+      expect(opacity).toBeCloseTo(0.65, 2)
+    })
+
+    it('works with different accent colors', () => {
+      applyIntensity(70, '#a78bfa')
+      const style = document.documentElement.style
+      const dim = style.getPropertyValue('--arctic-dim')
+      const [h, , l] = hexToHsl(dim)
+      const [accentH] = hexToHsl('#a78bfa')
+      expect(h).toBeCloseTo(accentH, 0)
+      expect(l).toBeCloseTo(70, 0)
     })
   })
 })

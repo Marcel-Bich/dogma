@@ -9,8 +9,10 @@ describe('SettingsPanel', () => {
     onClose: vi.fn(),
     activePresetId: 'arctic-pro',
     customAccent: null as string | null,
+    intensity: 50,
     onSelectPreset: vi.fn(),
     onCustomAccentChange: vi.fn(),
+    onIntensityChange: vi.fn(),
   }
 
   function setup(overrides = {}) {
@@ -19,6 +21,7 @@ describe('SettingsPanel', () => {
       onClose: vi.fn(),
       onSelectPreset: vi.fn(),
       onCustomAccentChange: vi.fn(),
+      onIntensityChange: vi.fn(),
       ...overrides,
     }
     const result = render(<SettingsPanel {...props} />)
@@ -155,6 +158,61 @@ describe('SettingsPanel', () => {
       const input = getByLabelText('Custom accent color') as HTMLInputElement
       fireEvent.input(input, { target: { value: '#abcdef' } })
       expect(props.onCustomAccentChange).toHaveBeenCalledWith('#abcdef')
+    })
+  })
+
+  describe('intensity section', () => {
+    it('renders "INTENSITY" section header', () => {
+      const { container } = setup({ open: true })
+      const headers = container.querySelectorAll('div')
+      const intensityHeader = Array.from(headers).find(
+        (el) => el.textContent === 'Intensity' && el.style.textTransform === 'uppercase'
+      )
+      expect(intensityHeader).toBeTruthy()
+    })
+
+    it('renders range input with aria-label "Intensity"', () => {
+      const { getByLabelText } = setup({ open: true })
+      const input = getByLabelText('Intensity') as HTMLInputElement
+      expect(input.type).toBe('range')
+    })
+
+    it('range input has min=30', () => {
+      const { getByLabelText } = setup({ open: true })
+      const input = getByLabelText('Intensity') as HTMLInputElement
+      expect(input.min).toBe('30')
+    })
+
+    it('range input has max=90', () => {
+      const { getByLabelText } = setup({ open: true })
+      const input = getByLabelText('Intensity') as HTMLInputElement
+      expect(input.max).toBe('90')
+    })
+
+    it('range input has step=5', () => {
+      const { getByLabelText } = setup({ open: true })
+      const input = getByLabelText('Intensity') as HTMLInputElement
+      expect(input.step).toBe('5')
+    })
+
+    it('range input reflects intensity prop value', () => {
+      const { getByLabelText } = setup({ open: true, intensity: 70 })
+      const input = getByLabelText('Intensity') as HTMLInputElement
+      expect(input.value).toBe('70')
+    })
+
+    it('changing range input calls onIntensityChange with number', () => {
+      const { getByLabelText, props } = setup({ open: true, intensity: 50 })
+      const input = getByLabelText('Intensity') as HTMLInputElement
+      fireEvent.input(input, { target: { value: '65' } })
+      expect(props.onIntensityChange).toHaveBeenCalledWith(65)
+    })
+
+    it('intensity slider wrapper has minimum 44px height for touch target', () => {
+      const { getByLabelText } = setup({ open: true })
+      const input = getByLabelText('Intensity') as HTMLInputElement
+      const wrapper = input.parentElement!
+      expect(wrapper.style.minHeight).toBe('44px')
     })
   })
 

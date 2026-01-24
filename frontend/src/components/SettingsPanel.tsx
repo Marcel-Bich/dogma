@@ -5,8 +5,10 @@ interface SettingsPanelProps {
   onClose: () => void
   activePresetId: string
   customAccent: string | null
+  intensity: number
   onSelectPreset: (id: string) => void
   onCustomAccentChange: (hex: string) => void
+  onIntensityChange: (val: number) => void
 }
 
 export function SettingsPanel({
@@ -14,8 +16,10 @@ export function SettingsPanel({
   onClose,
   activePresetId,
   customAccent,
+  intensity,
   onSelectPreset,
   onCustomAccentChange,
+  onIntensityChange,
 }: SettingsPanelProps) {
   const currentAccent =
     customAccent || PRESETS.find((p) => p.id === activePresetId)?.colors.accent || '#22d3ee'
@@ -99,7 +103,7 @@ export function SettingsPanel({
         </div>
       </div>
 
-      <div>
+      <div class="mb-6">
         <div
           style={{
             fontSize: '10px',
@@ -126,6 +130,38 @@ export function SettingsPanel({
               cursor: 'pointer',
               background: 'none',
               padding: '2px',
+            }}
+          />
+        </div>
+      </div>
+
+      <div>
+        <div
+          style={{
+            fontSize: '10px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.15em',
+            color: 'var(--arctic-dim)',
+            marginBottom: '12px',
+          }}
+        >
+          Intensity
+        </div>
+        <div
+          class="flex items-center"
+          style={{ minHeight: '44px' }}
+        >
+          <input
+            type="range"
+            aria-label="Intensity"
+            min="30"
+            max="90"
+            step="5"
+            value={intensity}
+            onInput={(e) => onIntensityChange(Number((e.target as HTMLInputElement).value))}
+            style={{
+              width: '100%',
+              accentColor: currentAccent,
             }}
           />
         </div>

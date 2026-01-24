@@ -14,14 +14,16 @@ import {
   settingsOpen,
   activeThemeId,
   customAccent,
+  intensity,
   handleBridgeEvent,
   setLoading,
   setError,
   setSettingsOpen,
   setActiveTheme,
   setCustomAccent,
+  setIntensity,
 } from './state'
-import { loadTheme, getThemeColors, applyTheme, saveTheme } from './themes'
+import { loadTheme, getThemeColors, applyTheme, applyIntensity, saveTheme } from './themes'
 import type { BridgeEvent } from './types'
 
 export function App() {
@@ -32,8 +34,11 @@ export function App() {
     const stored = loadTheme()
     setActiveTheme(stored.presetId)
     setCustomAccent(stored.customAccent)
+    setIntensity(stored.intensity)
     const colors = getThemeColors(stored.presetId, stored.customAccent)
     applyTheme(colors)
+    const accent = stored.customAccent || colors.accent
+    applyIntensity(stored.intensity, accent)
   }, [])
 
   useEffect(() => {
@@ -76,14 +81,23 @@ export function App() {
     setCustomAccent(null)
     const colors = getThemeColors(id, null)
     applyTheme(colors)
-    saveTheme(id, null)
+    applyIntensity(intensity.value, colors.accent)
+    saveTheme(id, null, intensity.value)
   }
 
   function handleCustomAccent(hex: string) {
     setCustomAccent(hex)
     const colors = getThemeColors(activeThemeId.value, hex)
     applyTheme(colors)
-    saveTheme(activeThemeId.value, hex)
+    applyIntensity(intensity.value, hex)
+    saveTheme(activeThemeId.value, hex, intensity.value)
+  }
+
+  function handleIntensity(val: number) {
+    setIntensity(val)
+    const accent = customAccent.value || getThemeColors(activeThemeId.value, null).accent
+    applyIntensity(val, accent)
+    saveTheme(activeThemeId.value, customAccent.value, val)
   }
 
   function handleSelectSession(id: string) {
@@ -136,8 +150,10 @@ export function App() {
         onClose={() => setSettingsOpen(false)}
         activePresetId={activeThemeId.value}
         customAccent={customAccent.value}
+        intensity={intensity.value}
         onSelectPreset={handleSelectPreset}
         onCustomAccentChange={handleCustomAccent}
+        onIntensityChange={handleIntensity}
       />
     </div>
   )

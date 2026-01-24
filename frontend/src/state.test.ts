@@ -11,6 +11,7 @@ import {
   settingsOpen,
   activeThemeId,
   customAccent,
+  intensity,
   addMessage,
   handleBridgeEvent,
   setLoading,
@@ -19,6 +20,7 @@ import {
   setSettingsOpen,
   setActiveTheme,
   setCustomAccent,
+  setIntensity,
   resetState,
   loadSessions,
 } from './state'
@@ -401,12 +403,34 @@ describe('state', () => {
     })
   })
 
+  describe('intensity', () => {
+    it('starts at 50', () => {
+      expect(intensity.value).toBe(50)
+    })
+
+    it('setIntensity updates intensity.value', () => {
+      setIntensity(75)
+      expect(intensity.value).toBe(75)
+    })
+
+    it('setIntensity can be set to minimum 30', () => {
+      setIntensity(30)
+      expect(intensity.value).toBe(30)
+    })
+
+    it('setIntensity can be set to maximum 90', () => {
+      setIntensity(90)
+      expect(intensity.value).toBe(90)
+    })
+  })
+
   describe('resetState with settings signals', () => {
     it('resets all settings signals to defaults', () => {
       setMenuOpen(true)
       setSettingsOpen(true)
       setActiveTheme('pulse')
       setCustomAccent('#00ff00')
+      setIntensity(80)
 
       resetState()
 
@@ -414,6 +438,7 @@ describe('state', () => {
       expect(settingsOpen.value).toBe(false)
       expect(activeThemeId.value).toBe('arctic-pro')
       expect(customAccent.value).toBeNull()
+      expect(intensity.value).toBe(50)
     })
   })
 
