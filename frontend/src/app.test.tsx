@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, fireEvent, cleanup } from '@testing-library/preact'
 import { App } from './app'
 import * as state from './state'
+import * as themes from './themes'
 import type { BridgeEvent } from './types'
 
 // Mock backend module
@@ -22,6 +23,30 @@ const mockBackend = {
 
 vi.mock('./backend', () => ({
   createBackend: () => mockBackend,
+}))
+
+// Mock themes module
+vi.mock('./themes', () => ({
+  loadTheme: vi.fn(() => ({ presetId: 'arctic-pro', customAccent: null })),
+  getThemeColors: vi.fn(() => ({
+    accent: '#22d3ee',
+    accentDark: '#0e7490',
+    accentLight: '#67e8f9',
+    border: '#1e3a4a',
+    text: '#c8c8d8',
+    dim: '#4a6670',
+    message: '#e0f0ff',
+    thinking: '#3a6670',
+    error: '#f87171',
+    black: '#000000',
+  })),
+  applyTheme: vi.fn(),
+  saveTheme: vi.fn(),
+  PRESETS: [
+    { id: 'arctic-pro', name: 'Arctic Pro', colors: { accent: '#22d3ee', accentDark: '#0e7490', accentLight: '#67e8f9', border: '#1e3a4a', text: '#c8c8d8', dim: '#4a6670', message: '#e0f0ff', thinking: '#3a6670', error: '#f87171', black: '#000000' } },
+    { id: 'pulse', name: 'Pulse', colors: { accent: '#a78bfa', accentDark: '#6d28d9', accentLight: '#c4b5fd', border: '#2e1a5a', text: '#c8c8d8', dim: '#5a4a70', message: '#e0f0ff', thinking: '#4a3a60', error: '#f87171', black: '#000000' } },
+    { id: 'ember', name: 'Ember', colors: { accent: '#f59e0b', accentDark: '#b45309', accentLight: '#fbbf24', border: '#4a3a1a', text: '#c8c8d8', dim: '#6a5a40', message: '#e0f0ff', thinking: '#5a4a30', error: '#f87171', black: '#000000' } },
+  ],
 }))
 
 // Mock loadSessions to prevent SessionList useEffect from interfering
@@ -229,6 +254,83 @@ describe('App', () => {
     it('does not render error when error state is null', () => {
       const { queryByTestId } = render(<App />)
       expect(queryByTestId('error-message')).toBeNull()
+    })
+  })
+
+  describe('settings panel', () => {
+    it('renders SettingsPanel component', () => {
+      const { getByTestId } = render(<App />)
+      expect(getByTestId('settings-panel')).toBeTruthy()
+    })
+
+    it('settings panel is initially hidden', () => {
+      const { getByTestId } = render(<App />)
+      const panel = getByTestId('settings-panel')
+      expect((panel as HTMLElement).style.transform).toBe('translateX(100%)')
+    })
+
+    it('opening settings via menu shows settings panel', () => {
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      const menuBtn = getByRole('button', { name: 'Menu' })
+      fireEvent.click(menuBtn)
+      fireEvent.click(getByText('Settings'))
+      const panel = getByTestId('settings-panel')
+      expect((panel as HTMLElement).style.transform).toBe('translateX(0)')
+    })
+
+    it('closing settings panel hides it', () => {
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      // Open
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Settings'))
+      // Close
+      fireEvent.click(getByRole('button', { name: 'Close settings' }))
+      const panel = getByTestId('settings-panel')
+      expect((panel as HTMLElement).style.transform).toBe('translateX(100%)')
+    })
+  })
+
+  describe('theme initialization', () => {
+    it('loads theme from localStorage on mount', () => {
+      render(<App />)
+      expect(themes.loadTheme).toHaveBeenCalled()
+      expect(themes.getThemeColors).toHaveBeenCalledWith('arctic-pro', null)
+      expect(themes.applyTheme).toHaveBeenCalled()
+    })
+
+    it('sets active theme and custom accent from stored values', () => {
+      vi.mocked(themes.loadTheme).mockReturnValueOnce({ presetId: 'pulse', customAccent: '#ff0000' })
+      render(<App />)
+      expect(state.activeThemeId.value).toBe('pulse')
+      expect(state.customAccent.value).toBe('#ff0000')
+    })
+
+    it('selecting a preset updates theme and saves', () => {
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      // Open settings
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Settings'))
+      // Click Pulse preset
+      fireEvent.click(getByTestId('preset-pulse'))
+      expect(state.activeThemeId.value).toBe('pulse')
+      expect(state.customAccent.value).toBeNull()
+      expect(themes.getThemeColors).toHaveBeenCalledWith('pulse', null)
+      expect(themes.applyTheme).toHaveBeenCalled()
+      expect(themes.saveTheme).toHaveBeenCalledWith('pulse', null)
+    })
+
+    it('custom accent updates theme and saves', () => {
+      const { getByRole, getByText, getByLabelText } = render(<App />)
+      // Open settings
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Settings'))
+      // Change custom color
+      const colorInput = getByLabelText('Custom accent color')
+      fireEvent.input(colorInput, { target: { value: '#ff5500' } })
+      expect(state.customAccent.value).toBe('#ff5500')
+      expect(themes.getThemeColors).toHaveBeenCalledWith('arctic-pro', '#ff5500')
+      expect(themes.applyTheme).toHaveBeenCalled()
+      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', '#ff5500')
     })
   })
 

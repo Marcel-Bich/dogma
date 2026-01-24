@@ -5,20 +5,36 @@ import { ChatInput } from './components/ChatInput'
 import { Menu } from './components/Menu'
 import { MessageList } from './components/MessageList'
 import { SessionList } from './components/SessionList'
+import { SettingsPanel } from './components/SettingsPanel'
 import {
   messages,
   loading,
   error,
   sessionId,
+  settingsOpen,
+  activeThemeId,
+  customAccent,
   handleBridgeEvent,
   setLoading,
   setError,
+  setSettingsOpen,
+  setActiveTheme,
+  setCustomAccent,
 } from './state'
+import { loadTheme, getThemeColors, applyTheme, saveTheme } from './themes'
 import type { BridgeEvent } from './types'
 
 export function App() {
   const [showSessions, setShowSessions] = useState(false)
   const backend = useMemo(() => createBackend(), [])
+
+  useEffect(() => {
+    const stored = loadTheme()
+    setActiveTheme(stored.presetId)
+    setCustomAccent(stored.customAccent)
+    const colors = getThemeColors(stored.presetId, stored.customAccent)
+    applyTheme(colors)
+  }, [])
 
   useEffect(() => {
     const unsub = backend.onEvent((event: BridgeEvent) => {
@@ -51,6 +67,25 @@ export function App() {
     backend.cancelPrompt()
   }
 
+  function handleOpenSettings() {
+    setSettingsOpen(true)
+  }
+
+  function handleSelectPreset(id: string) {
+    setActiveTheme(id)
+    setCustomAccent(null)
+    const colors = getThemeColors(id, null)
+    applyTheme(colors)
+    saveTheme(id, null)
+  }
+
+  function handleCustomAccent(hex: string) {
+    setCustomAccent(hex)
+    const colors = getThemeColors(activeThemeId.value, hex)
+    applyTheme(colors)
+    saveTheme(activeThemeId.value, hex)
+  }
+
   function handleSelectSession(id: string) {
     console.log('Selected session:', id)
   }
@@ -61,7 +96,7 @@ export function App() {
         <Menu
           showSessions={showSessions}
           onToggleSessions={() => setShowSessions(!showSessions)}
-          onOpenSettings={() => {}}
+          onOpenSettings={handleOpenSettings}
         />
       </div>
       <div class="flex flex-1 overflow-hidden">
@@ -89,6 +124,14 @@ export function App() {
           />
         </div>
       </div>
+      <SettingsPanel
+        open={settingsOpen.value}
+        onClose={() => setSettingsOpen(false)}
+        activePresetId={activeThemeId.value}
+        customAccent={customAccent.value}
+        onSelectPreset={handleSelectPreset}
+        onCustomAccentChange={handleCustomAccent}
+      />
     </div>
   )
 }
