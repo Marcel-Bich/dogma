@@ -7,10 +7,18 @@ import {
   sessions,
   sessionsLoading,
   sessionsError,
+  menuOpen,
+  settingsOpen,
+  activeThemeId,
+  customAccent,
   addMessage,
   handleBridgeEvent,
   setLoading,
   setError,
+  setMenuOpen,
+  setSettingsOpen,
+  setActiveTheme,
+  setCustomAccent,
   resetState,
   loadSessions,
 } from './state'
@@ -328,6 +336,84 @@ describe('state', () => {
       expect(sessions.value).toEqual([])
       expect(sessionsLoading.value).toBe(false)
       expect(sessionsError.value).toBeNull()
+    })
+  })
+
+  describe('menuOpen', () => {
+    it('starts as false', () => {
+      expect(menuOpen.value).toBe(false)
+    })
+
+    it('setMenuOpen(true) updates menuOpen.value to true', () => {
+      setMenuOpen(true)
+      expect(menuOpen.value).toBe(true)
+    })
+
+    it('setMenuOpen(false) updates menuOpen.value to false', () => {
+      setMenuOpen(true)
+      setMenuOpen(false)
+      expect(menuOpen.value).toBe(false)
+    })
+  })
+
+  describe('settingsOpen', () => {
+    it('starts as false', () => {
+      expect(settingsOpen.value).toBe(false)
+    })
+
+    it('setSettingsOpen(true) updates settingsOpen.value', () => {
+      setSettingsOpen(true)
+      expect(settingsOpen.value).toBe(true)
+    })
+
+    it('setSettingsOpen(false) updates settingsOpen.value', () => {
+      setSettingsOpen(true)
+      setSettingsOpen(false)
+      expect(settingsOpen.value).toBe(false)
+    })
+  })
+
+  describe('activeThemeId', () => {
+    it('starts as arctic-pro', () => {
+      expect(activeThemeId.value).toBe('arctic-pro')
+    })
+
+    it('setActiveTheme updates activeThemeId.value', () => {
+      setActiveTheme('pulse')
+      expect(activeThemeId.value).toBe('pulse')
+    })
+  })
+
+  describe('customAccent', () => {
+    it('starts as null', () => {
+      expect(customAccent.value).toBeNull()
+    })
+
+    it('setCustomAccent sets hex value', () => {
+      setCustomAccent('#ff0000')
+      expect(customAccent.value).toBe('#ff0000')
+    })
+
+    it('setCustomAccent(null) resets to null', () => {
+      setCustomAccent('#ff0000')
+      setCustomAccent(null)
+      expect(customAccent.value).toBeNull()
+    })
+  })
+
+  describe('resetState with settings signals', () => {
+    it('resets all settings signals to defaults', () => {
+      setMenuOpen(true)
+      setSettingsOpen(true)
+      setActiveTheme('pulse')
+      setCustomAccent('#00ff00')
+
+      resetState()
+
+      expect(menuOpen.value).toBe(false)
+      expect(settingsOpen.value).toBe(false)
+      expect(activeThemeId.value).toBe('arctic-pro')
+      expect(customAccent.value).toBeNull()
     })
   })
 
