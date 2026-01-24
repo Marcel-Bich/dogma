@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'preact/hooks'
 import { useState } from 'preact/hooks'
 import { createBackend } from './backend'
 import { ChatInput } from './components/ChatInput'
+import { Menu } from './components/Menu'
 import { MessageList } from './components/MessageList'
 import { SessionList } from './components/SessionList'
 import {
@@ -56,22 +57,12 @@ export function App() {
 
   return (
     <div class="flex flex-col h-screen bg-black relative overflow-hidden scanline">
-      <div class="relative z-10 flex items-center justify-between px-4 py-2.5 bg-black border-b shadow-md bg-gradient-to-b from-black to-black" style={{ borderColor: 'var(--arctic-border)' }}>
-        <span class="text-sm font-semibold tracking-wide select-none" style={{ letterSpacing: '0.15em' }}>
-          <span style={{ color: 'var(--arctic-cyan)' }}>[&gt; </span>
-          <span data-testid="app-title" style={{ color: 'var(--arctic-text)' }}>DOGMA</span>
-        </span>
-        <button
-          type="button"
-          aria-label="Toggle sessions"
-          onClick={() => setShowSessions(!showSessions)}
-          class="px-3 py-1 text-xs uppercase transition-colors duration-200"
-          style={{ color: '#666', letterSpacing: '0.1em' }}
-          onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'var(--arctic-cyan)' }}
-          onMouseLeave={(e) => { (e.target as HTMLElement).style.color = '#666' }}
-        >
-          Sessions
-        </button>
+      <div class="relative z-10 flex items-center justify-end px-4 py-1 bg-black border-b shadow-md bg-gradient-to-b from-black to-black" style={{ borderColor: 'var(--arctic-border)' }}>
+        <Menu
+          showSessions={showSessions}
+          onToggleSessions={() => setShowSessions(!showSessions)}
+          onOpenSettings={() => {}}
+        />
       </div>
       <div class="flex flex-1 overflow-hidden">
         <div

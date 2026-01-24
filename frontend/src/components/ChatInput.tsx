@@ -34,7 +34,6 @@ export function ChatInput({ onSend, onContinue, onCancel, loading }: ChatInputPr
 
   return (
     <div class="flex items-end gap-3 p-3 bg-black border-t" style={{ borderColor: 'var(--arctic-border)' }}>
-      <span class="pb-2 text-lg select-none" style={{ color: 'var(--arctic-cyan)' }}>&gt;</span>
       <textarea
         class="flex-1 resize-none p-2 border text-sm glass-input focus:outline-none transition-all duration-200"
         style={{

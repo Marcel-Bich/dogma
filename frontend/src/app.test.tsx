@@ -59,40 +59,19 @@ describe('App', () => {
       expect(root.className).toContain('h-screen')
     })
 
-    it('renders DOGMA title in header', () => {
-      const { getByTestId } = render(<App />)
-      const title = getByTestId('app-title')
-      expect(title).toBeTruthy()
-      expect(title.textContent).toBe('DOGMA')
-      expect(title.tagName).toBe('SPAN')
-      const brandingSpan = title.parentElement as HTMLElement
-      expect(brandingSpan.className).toContain('font-semibold')
-      expect(brandingSpan.className).toContain('tracking-wide')
-    })
-
-    it('header has justify-between for title and button layout', () => {
-      const { getByTestId } = render(<App />)
-      const title = getByTestId('app-title')
-      const header = title.parentElement!.parentElement as HTMLElement
-      expect(header.className).toContain('justify-between')
+    it('renders Menu component in header', () => {
+      const { getByRole } = render(<App />)
+      const menuBtn = getByRole('button', { name: 'Menu' })
+      expect(menuBtn).toBeTruthy()
     })
 
     it('header has shadow and gradient for visual depth', () => {
-      const { getByTestId } = render(<App />)
-      const title = getByTestId('app-title')
-      const header = title.parentElement!.parentElement as HTMLElement
+      const { getByRole } = render(<App />)
+      const menuBtn = getByRole('button', { name: 'Menu' })
+      const header = menuBtn.closest('.z-10') as HTMLElement
       expect(header.className).toContain('shadow-md')
       expect(header.className).toContain('bg-gradient-to-b')
       expect(header.className).toContain('z-10')
-    })
-
-    it('sessions button highlights on hover', () => {
-      const { getByRole } = render(<App />)
-      const btn = getByRole('button', { name: /toggle sessions/i })
-      fireEvent.mouseEnter(btn)
-      expect(btn.style.color).toBe('var(--arctic-cyan)')
-      fireEvent.mouseLeave(btn)
-      expect(btn.style.color).toBe('rgb(102, 102, 102)')
     })
   })
 
@@ -261,22 +240,26 @@ describe('App', () => {
       expect(panel.className).toContain('opacity-0')
     })
 
-    it('toggle button expands sessions panel', () => {
-      const { getByRole, getByTestId } = render(<App />)
-      const toggleBtn = getByRole('button', { name: /toggle sessions/i })
-      fireEvent.click(toggleBtn)
+    it('sessions menu item expands sessions panel', () => {
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      const menuBtn = getByRole('button', { name: 'Menu' })
+      fireEvent.click(menuBtn)
+      fireEvent.click(getByText('Sessions'))
       const panel = getByTestId('sessions-panel')
       expect(panel.className).toContain('w-64')
       expect(panel.className).toContain('opacity-100')
     })
 
-    it('toggle button collapses sessions panel on second click', () => {
-      const { getByRole, getByTestId } = render(<App />)
-      const toggleBtn = getByRole('button', { name: /toggle sessions/i })
-      fireEvent.click(toggleBtn)
+    it('sessions menu item collapses sessions panel on second toggle', () => {
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      // Open sessions
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Sessions'))
       const panel = getByTestId('sessions-panel')
       expect(panel.className).toContain('w-64')
-      fireEvent.click(toggleBtn)
+      // Close sessions
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Sessions'))
       expect(panel.className).toContain('w-0')
       expect(panel.className).toContain('opacity-0')
     })
