@@ -642,3 +642,137 @@ func TestContinuePrompt_DoesNotCallSendPrompt(t *testing.T) {
 		t.Error("expected SendPrompt NOT to be called, but it was")
 	}
 }
+
+// --- mockSessionLister ---
+
+type mockSessionLister struct {
+	listSessionsFn func(projectPath string) ([]claude.SessionInfo, error)
+}
+
+func (m *mockSessionLister) ListSessions(projectPath string) ([]claude.SessionInfo, error) {
+	if m.listSessionsFn != nil {
+		return m.listSessionsFn(projectPath)
+	}
+	return nil, nil
+}
+
+// --- ListSessions tests ---
+
+func TestListSessions_CallsListerWithCorrectPath(t *testing.T) {
+	var calledPath string
+	lister := &mockSessionLister{
+		listSessionsFn: func(projectPath string) ([]claude.SessionInfo, error) {
+			calledPath = projectPath
+			return []claude.SessionInfo{}, nil
+		},
+	}
+
+	app := &App{
+		lister:     lister,
+		workingDir: "/home/user/project",
+	}
+
+	_, _ = app.ListSessions()
+
+	if calledPath != "/home/user/project" {
+		t.Errorf("expected lister called with '/home/user/project', got %q", calledPath)
+	}
+}
+
+func TestListSessions_ReturnsSessionList(t *testing.T) {
+	expected := []claude.SessionInfo{
+		{ID: "sess-1", Summary: "first session"},
+		{ID: "sess-2", Summary: "second session"},
+	}
+	lister := &mockSessionLister{
+		listSessionsFn: func(projectPath string) ([]claude.SessionInfo, error) {
+			return expected, nil
+		},
+	}
+
+	app := &App{
+		lister:     lister,
+		workingDir: "/some/path",
+	}
+
+	result, err := app.ListSessions()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 sessions, got %d", len(result))
+	}
+	if result[0].ID != "sess-1" {
+		t.Errorf("expected first session ID 'sess-1', got %q", result[0].ID)
+	}
+	if result[1].ID != "sess-2" {
+		t.Errorf("expected second session ID 'sess-2', got %q", result[1].ID)
+	}
+}
+
+func TestListSessions_PropagatesErrors(t *testing.T) {
+	lister := &mockSessionLister{
+		listSessionsFn: func(projectPath string) ([]claude.SessionInfo, error) {
+			return nil, errors.New("listing failed")
+		},
+	}
+
+	app := &App{
+		lister:     lister,
+		workingDir: "/some/path",
+	}
+
+	result, err := app.ListSessions()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err.Error() != "listing failed" {
+		t.Errorf("expected error 'listing failed', got %q", err.Error())
+	}
+	if result != nil {
+		t.Errorf("expected nil result on error, got %v", result)
+	}
+}
+
+func TestListSessions_UsesWorkingDirWhenSet(t *testing.T) {
+	var calledPath string
+	lister := &mockSessionLister{
+		listSessionsFn: func(projectPath string) ([]claude.SessionInfo, error) {
+			calledPath = projectPath
+			return []claude.SessionInfo{}, nil
+		},
+	}
+
+	app := &App{
+		lister:     lister,
+		workingDir: "/custom/work/dir",
+	}
+
+	_, _ = app.ListSessions()
+
+	if calledPath != "/custom/work/dir" {
+		t.Errorf("expected workingDir '/custom/work/dir', got %q", calledPath)
+	}
+}
+
+func TestListSessions_FallsBackToGetwdWhenWorkingDirEmpty(t *testing.T) {
+	var calledPath string
+	lister := &mockSessionLister{
+		listSessionsFn: func(projectPath string) ([]claude.SessionInfo, error) {
+			calledPath = projectPath
+			return []claude.SessionInfo{}, nil
+		},
+	}
+
+	app := &App{
+		lister:     lister,
+		workingDir: "", // empty - should fall back to os.Getwd()
+	}
+
+	_, _ = app.ListSessions()
+
+	// os.Getwd() returns the current working directory; it should not be empty
+	if calledPath == "" {
+		t.Error("expected non-empty project path from os.Getwd() fallback")
+	}
+}
