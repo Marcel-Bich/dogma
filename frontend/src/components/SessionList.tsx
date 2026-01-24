@@ -34,7 +34,7 @@ export function SessionList({ onSelect, selectedId, listFn }: SessionListProps) 
 
   if (sessionsLoading.value) {
     return (
-      <div data-testid="sessions-loading" class="p-4 text-gray-400 text-sm">
+      <div data-testid="sessions-loading" class="p-4 text-sm" style={{ color: '#4a6a7a' }}>
         Loading sessions...
       </div>
     )
@@ -50,14 +50,14 @@ export function SessionList({ onSelect, selectedId, listFn }: SessionListProps) 
 
   if (sessions.value.length === 0) {
     return (
-      <div data-testid="sessions-empty" class="p-4 text-gray-500 text-sm">
+      <div data-testid="sessions-empty" class="p-4 text-sm" style={{ color: '#4a6a7a' }}>
         No sessions found
       </div>
     )
   }
 
   return (
-    <div data-testid="sessions-list" class="flex flex-col gap-1 p-2">
+    <div data-testid="sessions-list" class="flex flex-col gap-0.5 p-2">
       {sessions.value.map((session: SessionInfo) => {
         const isSelected = session.id === selectedId
         const displayText = session.summary || session.first_message || session.id
@@ -67,17 +67,22 @@ export function SessionList({ onSelect, selectedId, listFn }: SessionListProps) 
             type="button"
             data-testid={`session-item-${session.id}`}
             onClick={() => onSelect(session.id)}
-            class={`text-left p-2 rounded-lg border transition-colors truncate ${
+            class={`text-left py-2 px-3 transition-all duration-200 truncate border-l-2 ${
               isSelected
-                ? 'border-blue-500 bg-blue-900/30 text-white'
-                : 'border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:border-gray-600'
+                ? 'border-blue-500 bg-blue-900/20 border-l-2'
+                : 'border-gray-700 border-l-transparent hover:border-l-cyan-800'
             }`}
+            style={{
+              color: isSelected ? '#e0f0ff' : '#888',
+              background: isSelected ? undefined : 'transparent',
+              borderLeftColor: isSelected ? '#22d3ee' : undefined,
+            }}
           >
-            <div class="text-sm font-medium truncate">{displayText}</div>
-            <div class="flex items-center gap-2 mt-1">
-              <span class="text-xs text-gray-500">{formatRelativeTime(session.timestamp)}</span>
+            <div class="text-xs truncate">{displayText}</div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-xs" style={{ color: '#4a4a4a' }}>{formatRelativeTime(session.timestamp)}</span>
               {session.model && (
-                <span class="text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-400">{session.model}</span>
+                <span class="text-xs" style={{ color: '#4a4a4a' }}>{session.model}</span>
               )}
             </div>
           </button>

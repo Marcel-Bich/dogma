@@ -42,8 +42,8 @@ describe('App', () => {
 
   describe('rendering', () => {
     it('renders ChatInput component', () => {
-      const { getByPlaceholderText } = render(<App />)
-      expect(getByPlaceholderText('Enter your prompt...')).toBeTruthy()
+      const { getByLabelText } = render(<App />)
+      expect(getByLabelText('Enter your prompt...')).toBeTruthy()
     })
 
     it('renders MessageList component', () => {
@@ -60,28 +60,39 @@ describe('App', () => {
     })
 
     it('renders DOGMA title in header', () => {
-      const { getByText } = render(<App />)
-      const title = getByText('DOGMA')
+      const { getByTestId } = render(<App />)
+      const title = getByTestId('app-title')
       expect(title).toBeTruthy()
+      expect(title.textContent).toBe('DOGMA')
       expect(title.tagName).toBe('SPAN')
-      expect(title.className).toContain('font-semibold')
-      expect(title.className).toContain('tracking-wide')
+      const brandingSpan = title.parentElement as HTMLElement
+      expect(brandingSpan.className).toContain('font-semibold')
+      expect(brandingSpan.className).toContain('tracking-wide')
     })
 
     it('header has justify-between for title and button layout', () => {
-      const { getByText } = render(<App />)
-      const title = getByText('DOGMA')
-      const header = title.parentElement as HTMLElement
+      const { getByTestId } = render(<App />)
+      const title = getByTestId('app-title')
+      const header = title.parentElement!.parentElement as HTMLElement
       expect(header.className).toContain('justify-between')
     })
 
     it('header has shadow and gradient for visual depth', () => {
-      const { getByText } = render(<App />)
-      const title = getByText('DOGMA')
-      const header = title.parentElement as HTMLElement
+      const { getByTestId } = render(<App />)
+      const title = getByTestId('app-title')
+      const header = title.parentElement!.parentElement as HTMLElement
       expect(header.className).toContain('shadow-md')
       expect(header.className).toContain('bg-gradient-to-b')
       expect(header.className).toContain('z-10')
+    })
+
+    it('sessions button highlights on hover', () => {
+      const { getByRole } = render(<App />)
+      const btn = getByRole('button', { name: /toggle sessions/i })
+      fireEvent.mouseEnter(btn)
+      expect(btn.style.color).toBe('rgb(34, 211, 238)')
+      fireEvent.mouseLeave(btn)
+      expect(btn.style.color).toBe('rgb(102, 102, 102)')
     })
   })
 
@@ -147,8 +158,8 @@ describe('App', () => {
 
   describe('send handler', () => {
     it('calls backend.sendPrompt with text when send is triggered', async () => {
-      const { getByPlaceholderText, getByRole } = render(<App />)
-      const textarea = getByPlaceholderText('Enter your prompt...')
+      const { getByLabelText, getByRole } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test prompt' } })
 
       const sendButton = getByRole('button', { name: /send/i })
@@ -158,8 +169,8 @@ describe('App', () => {
     })
 
     it('sets loading=true when send is triggered', () => {
-      const { getByPlaceholderText, getByRole } = render(<App />)
-      const textarea = getByPlaceholderText('Enter your prompt...')
+      const { getByLabelText, getByRole } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
 
       const sendButton = getByRole('button', { name: /send/i })
@@ -170,8 +181,8 @@ describe('App', () => {
 
     it('clears error when send is triggered', () => {
       state.setError('previous error')
-      const { getByPlaceholderText, getByRole } = render(<App />)
-      const textarea = getByPlaceholderText('Enter your prompt...')
+      const { getByLabelText, getByRole } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
 
       const sendButton = getByRole('button', { name: /send/i })
@@ -183,8 +194,8 @@ describe('App', () => {
 
   describe('continue handler', () => {
     it('calls backend.continuePrompt with text when continue is triggered', () => {
-      const { getByPlaceholderText, getByRole } = render(<App />)
-      const textarea = getByPlaceholderText('Enter your prompt...')
+      const { getByLabelText, getByRole } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'resume work' } })
 
       const continueButton = getByRole('button', { name: /continue session/i })
@@ -194,8 +205,8 @@ describe('App', () => {
     })
 
     it('sets loading=true when continue is triggered', () => {
-      const { getByPlaceholderText, getByRole } = render(<App />)
-      const textarea = getByPlaceholderText('Enter your prompt...')
+      const { getByLabelText, getByRole } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
 
       const continueButton = getByRole('button', { name: /continue session/i })
@@ -206,8 +217,8 @@ describe('App', () => {
 
     it('clears error when continue is triggered', () => {
       state.setError('previous error')
-      const { getByPlaceholderText, getByRole } = render(<App />)
-      const textarea = getByPlaceholderText('Enter your prompt...')
+      const { getByLabelText, getByRole } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
 
       const continueButton = getByRole('button', { name: /continue session/i })
