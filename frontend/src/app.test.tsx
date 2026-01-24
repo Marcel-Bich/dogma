@@ -2,43 +2,35 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, fireEvent, cleanup } from '@testing-library/preact'
 import { App } from './app'
 import * as state from './state'
+import type { BridgeEvent } from './types'
 
-// Mock Wails bindings
-const mockSendPrompt = vi.fn().mockResolvedValue(undefined)
-const mockContinuePrompt = vi.fn().mockResolvedValue(undefined)
-const mockCancelPrompt = vi.fn().mockResolvedValue(undefined)
+// Mock backend module
+type EventCallback = (event: BridgeEvent) => void
+let registeredCallback: EventCallback | null = null
+const mockUnsubscribe = vi.fn()
 
-vi.mock('../wailsjs/go/main/App', () => ({
-  SendPrompt: (...args: unknown[]) => mockSendPrompt(...args),
-  ContinuePrompt: (...args: unknown[]) => mockContinuePrompt(...args),
-  CancelPrompt: (...args: unknown[]) => mockCancelPrompt(...args),
-  ListSessions: vi.fn().mockResolvedValue([]),
+const mockBackend = {
+  sendPrompt: vi.fn().mockResolvedValue(undefined),
+  continuePrompt: vi.fn().mockResolvedValue(undefined),
+  cancelPrompt: vi.fn().mockResolvedValue(undefined),
+  listSessions: vi.fn().mockResolvedValue([]),
+  onEvent: vi.fn((cb: EventCallback) => {
+    registeredCallback = cb
+    return mockUnsubscribe
+  }),
+}
+
+vi.mock('./backend', () => ({
+  createBackend: () => mockBackend,
 }))
 
 // Mock loadSessions to prevent SessionList useEffect from interfering
 vi.spyOn(state, 'loadSessions').mockResolvedValue(undefined)
 
-// Track registered listeners and their cleanup functions
-type Listener = (...data: unknown[]) => void
-const listeners: Map<string, Listener> = new Map()
-const cleanupFns: Array<() => void> = []
-
-const mockEventsOn = vi.fn((eventName: string, callback: Listener) => {
-  listeners.set(eventName, callback)
-  const unsub = () => { listeners.delete(eventName) }
-  cleanupFns.push(unsub)
-  return unsub
-})
-
-vi.mock('../wailsjs/runtime/runtime', () => ({
-  EventsOn: (...args: unknown[]) => mockEventsOn(...(args as [string, Listener])),
-}))
-
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    listeners.clear()
-    cleanupFns.length = 0
+    registeredCallback = null
     state.resetState()
     // jsdom does not implement scrollIntoView
     Element.prototype.scrollIntoView = vi.fn()
@@ -68,74 +60,68 @@ describe('App', () => {
     })
   })
 
-  describe('EventsOn listeners', () => {
-    it('registers claude:event listener on mount', () => {
+  describe('backend event listener', () => {
+    it('registers onEvent callback on mount', () => {
       render(<App />)
-      expect(mockEventsOn).toHaveBeenCalledWith('claude:event', expect.any(Function))
+      expect(mockBackend.onEvent).toHaveBeenCalledWith(expect.any(Function))
     })
 
-    it('registers claude:done listener on mount', () => {
-      render(<App />)
-      expect(mockEventsOn).toHaveBeenCalledWith('claude:done', expect.any(Function))
+    it('unsubscribes onEvent on unmount', () => {
+      const { unmount } = render(<App />)
+      unmount()
+      expect(mockUnsubscribe).toHaveBeenCalled()
     })
 
-    it('registers claude:error listener on mount', () => {
-      render(<App />)
-      expect(mockEventsOn).toHaveBeenCalledWith('claude:error', expect.any(Function))
-    })
-
-    it('claude:event listener calls handleBridgeEvent', () => {
+    it('non-result events are forwarded to handleBridgeEvent', () => {
       const spy = vi.spyOn(state, 'handleBridgeEvent')
       render(<App />)
 
-      const eventCallback = listeners.get('claude:event')
-      expect(eventCallback).toBeDefined()
-
-      const bridgeEvent = { type: 'assistant', text: 'hello' }
-      eventCallback!(bridgeEvent)
-      expect(spy).toHaveBeenCalledWith(bridgeEvent)
+      expect(registeredCallback).toBeDefined()
+      const event: BridgeEvent = { type: 'assistant', text: 'hello' }
+      registeredCallback!(event)
+      expect(spy).toHaveBeenCalledWith(event)
     })
 
-    it('claude:done listener sets loading=false', () => {
+    it('result event without error sets loading=false', () => {
       render(<App />)
       state.setLoading(true)
 
-      const doneCallback = listeners.get('claude:done')
-      expect(doneCallback).toBeDefined()
-      doneCallback!()
-
+      expect(registeredCallback).toBeDefined()
+      registeredCallback!({ type: 'result', result: 'done' })
       expect(state.loading.value).toBe(false)
     })
 
-    it('claude:error listener sets error and loading=false', () => {
+    it('result event with is_error sets error and loading=false', () => {
       render(<App />)
       state.setLoading(true)
 
-      const errorCallback = listeners.get('claude:error')
-      expect(errorCallback).toBeDefined()
-      errorCallback!('something went wrong')
-
-      expect(state.error.value).toBe('something went wrong')
+      expect(registeredCallback).toBeDefined()
+      registeredCallback!({ type: 'result', result: 'something failed', is_error: true })
+      expect(state.error.value).toBe('something failed')
       expect(state.loading.value).toBe(false)
     })
-  })
 
-  describe('cleanup on unmount', () => {
-    it('unsubscribes all EventsOn listeners on unmount', () => {
-      const { unmount } = render(<App />)
+    it('result event with is_error and no result uses fallback message', () => {
+      render(<App />)
 
-      // All three listeners should be registered
-      expect(listeners.size).toBe(3)
+      expect(registeredCallback).toBeDefined()
+      registeredCallback!({ type: 'result', is_error: true })
+      expect(state.error.value).toBe('Unknown error')
+    })
 
-      unmount()
+    it('system event is forwarded to handleBridgeEvent', () => {
+      const spy = vi.spyOn(state, 'handleBridgeEvent')
+      render(<App />)
 
-      // After unmount, cleanup should have been called
-      expect(listeners.size).toBe(0)
+      expect(registeredCallback).toBeDefined()
+      const event: BridgeEvent = { type: 'system', session_id: 'sess-1' }
+      registeredCallback!(event)
+      expect(spy).toHaveBeenCalledWith(event)
     })
   })
 
   describe('send handler', () => {
-    it('calls SendPrompt with text when send is triggered', async () => {
+    it('calls backend.sendPrompt with text when send is triggered', async () => {
       const { getByPlaceholderText, getByRole } = render(<App />)
       const textarea = getByPlaceholderText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test prompt' } })
@@ -143,7 +129,7 @@ describe('App', () => {
       const sendButton = getByRole('button', { name: /send/i })
       fireEvent.click(sendButton)
 
-      expect(mockSendPrompt).toHaveBeenCalledWith('test prompt')
+      expect(mockBackend.sendPrompt).toHaveBeenCalledWith('test prompt')
     })
 
     it('sets loading=true when send is triggered', () => {
@@ -171,7 +157,7 @@ describe('App', () => {
   })
 
   describe('continue handler', () => {
-    it('calls ContinuePrompt with text when continue is triggered', () => {
+    it('calls backend.continuePrompt with text when continue is triggered', () => {
       const { getByPlaceholderText, getByRole } = render(<App />)
       const textarea = getByPlaceholderText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'resume work' } })
@@ -179,7 +165,7 @@ describe('App', () => {
       const continueButton = getByRole('button', { name: /continue session/i })
       fireEvent.click(continueButton)
 
-      expect(mockContinuePrompt).toHaveBeenCalledWith('resume work')
+      expect(mockBackend.continuePrompt).toHaveBeenCalledWith('resume work')
     })
 
     it('sets loading=true when continue is triggered', () => {
@@ -207,14 +193,14 @@ describe('App', () => {
   })
 
   describe('cancel handler', () => {
-    it('calls CancelPrompt when cancel is triggered', () => {
+    it('calls backend.cancelPrompt when cancel is triggered', () => {
       state.setLoading(true)
       const { getByRole } = render(<App />)
 
       const cancelButton = getByRole('button', { name: /cancel/i })
       fireEvent.click(cancelButton)
 
-      expect(mockCancelPrompt).toHaveBeenCalledTimes(1)
+      expect(mockBackend.cancelPrompt).toHaveBeenCalledTimes(1)
     })
   })
 
