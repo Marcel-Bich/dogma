@@ -1,16 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   messages,
   loading,
   error,
   sessionId,
+  sessions,
+  sessionsLoading,
+  sessionsError,
   addMessage,
   handleBridgeEvent,
   setLoading,
   setError,
   resetState,
+  loadSessions,
 } from './state'
-import type { BridgeEvent, ChatMessage } from './types'
+import type { BridgeEvent, ChatMessage, SessionInfo } from './types'
 
 describe('state', () => {
   beforeEach(() => {
@@ -312,6 +316,81 @@ describe('state', () => {
       expect(loading.value).toBe(false)
       expect(error.value).toBeNull()
       expect(sessionId.value).toBeNull()
+    })
+
+    it('clears session state', () => {
+      sessions.value = [{ id: 's1', summary: 'test', first_message: 'hi', timestamp: '2026-01-01T00:00:00Z', model: 'opus' }]
+      sessionsLoading.value = true
+      sessionsError.value = 'old error'
+
+      resetState()
+
+      expect(sessions.value).toEqual([])
+      expect(sessionsLoading.value).toBe(false)
+      expect(sessionsError.value).toBeNull()
+    })
+  })
+
+  describe('loadSessions', () => {
+    const mockSessions: SessionInfo[] = [
+      { id: 's1', summary: 'First session', first_message: 'Hello', timestamp: '2026-01-24T10:00:00Z', model: 'opus' },
+      { id: 's2', summary: '', first_message: 'Build a feature', timestamp: '2026-01-24T09:00:00Z', model: 'sonnet' },
+    ]
+
+    it('sets sessionsLoading to true during load', async () => {
+      let resolvePromise: (v: SessionInfo[]) => void
+      const listFn = () => new Promise<SessionInfo[]>((resolve) => { resolvePromise = resolve })
+
+      const promise = loadSessions(listFn)
+      expect(sessionsLoading.value).toBe(true)
+
+      resolvePromise!(mockSessions)
+      await promise
+
+      expect(sessionsLoading.value).toBe(false)
+    })
+
+    it('populates sessions on success', async () => {
+      const listFn = vi.fn().mockResolvedValue(mockSessions)
+
+      await loadSessions(listFn)
+
+      expect(sessions.value).toEqual(mockSessions)
+      expect(sessionsError.value).toBeNull()
+    })
+
+    it('sets sessionsError on failure', async () => {
+      const listFn = vi.fn().mockRejectedValue(new Error('network error'))
+
+      await loadSessions(listFn)
+
+      expect(sessionsError.value).toBe('network error')
+      expect(sessions.value).toEqual([])
+    })
+
+    it('sets sessionsError with string for non-Error rejections', async () => {
+      const listFn = vi.fn().mockRejectedValue('string error')
+
+      await loadSessions(listFn)
+
+      expect(sessionsError.value).toBe('string error')
+    })
+
+    it('sets sessionsLoading to false after failure', async () => {
+      const listFn = vi.fn().mockRejectedValue(new Error('fail'))
+
+      await loadSessions(listFn)
+
+      expect(sessionsLoading.value).toBe(false)
+    })
+
+    it('clears previous error on success', async () => {
+      sessionsError.value = 'previous error'
+      const listFn = vi.fn().mockResolvedValue(mockSessions)
+
+      await loadSessions(listFn)
+
+      expect(sessionsError.value).toBeNull()
     })
   })
 })

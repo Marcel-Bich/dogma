@@ -1,5 +1,5 @@
 import { signal } from '@preact/signals'
-import type { BridgeEvent, ChatMessage, MessageBlock } from './types'
+import type { BridgeEvent, ChatMessage, MessageBlock, SessionInfo } from './types'
 
 let idCounter = 0
 
@@ -11,6 +11,10 @@ export const messages = signal<ChatMessage[]>([])
 export const loading = signal(false)
 export const error = signal<string | null>(null)
 export const sessionId = signal<string | null>(null)
+
+export const sessions = signal<SessionInfo[]>([])
+export const sessionsLoading = signal(false)
+export const sessionsError = signal<string | null>(null)
 
 let currentMessage: ChatMessage | null = null
 let finalized = false
@@ -111,11 +115,27 @@ export function setError(value: string | null): void {
   error.value = value
 }
 
+export async function loadSessions(listFn: () => Promise<SessionInfo[]>): Promise<void> {
+  sessionsLoading.value = true
+  try {
+    const result = await listFn()
+    sessions.value = result
+    sessionsError.value = null
+  } catch (err: unknown) {
+    sessionsError.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    sessionsLoading.value = false
+  }
+}
+
 export function resetState(): void {
   messages.value = []
   loading.value = false
   error.value = null
   sessionId.value = null
+  sessions.value = []
+  sessionsLoading.value = false
+  sessionsError.value = null
   currentMessage = null
   finalized = false
   idCounter = 0
