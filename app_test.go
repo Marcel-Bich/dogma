@@ -581,6 +581,39 @@ func TestContinuePrompt_Error(t *testing.T) {
 	}
 }
 
+func TestContinuePrompt_Handler_SkipsInvalidEvents(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendContinueFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
+			// Send invalid JSON - should be skipped
+			handler(claude.StreamEvent{Type: "system", Payload: json.RawMessage(`{invalid`)})
+			// Send empty type - should be skipped
+			handler(claude.StreamEvent{Type: "", Payload: json.RawMessage(`{"foo":"bar"}`)})
+			return nil
+		},
+	}
+
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
+
+	app.ContinuePrompt("test")
+
+	// Wait for goroutine
+	time.Sleep(50 * time.Millisecond)
+
+	events := emitter.getEvents()
+	// Only claude:done should be emitted (invalid events skipped)
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event (claude:done), got %d: %+v", len(events), events)
+	}
+	if events[0].name != "claude:done" {
+		t.Errorf("expected 'claude:done', got %q", events[0].name)
+	}
+}
+
 func TestContinuePrompt_DoesNotCallSendPrompt(t *testing.T) {
 	emitter := &mockEmitter{}
 	sendPromptCalled := false
