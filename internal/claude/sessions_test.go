@@ -2,6 +2,7 @@ package claude
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -290,6 +291,246 @@ func TestListSessions(t *testing.T) {
 		// session-c has no summary
 		if sessions[0].Summary != "" {
 			t.Errorf("sessions[0].Summary = %q, want empty", sessions[0].Summary)
+		}
+	})
+
+	t.Run("uses default home dir when BasePath is empty", func(t *testing.T) {
+		sl := NewSessionLister("")
+		// This should not panic - it resolves to ~/.claude/projects/...
+		// The directory won't exist, so we get empty slice
+		sessions, err := sl.ListSessions("/nonexistent/path/for/test")
+		if err != nil {
+			t.Fatalf("ListSessions() error = %v", err)
+		}
+		if len(sessions) != 0 {
+			t.Errorf("ListSessions() returned %d sessions, want 0", len(sessions))
+		}
+	})
+
+	t.Run("returns error when home dir resolution fails", func(t *testing.T) {
+		sl := &SessionLister{
+			homeDirFunc: func() (string, error) {
+				return "", fmt.Errorf("HOME not set")
+			},
+		}
+		_, err := sl.ListSessions("/some/project")
+		if err == nil {
+			t.Error("ListSessions() expected error when homeDirFunc fails, got nil")
+		}
+	})
+
+	t.Run("returns error for unreadable directory", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		projectDir := filepath.Join(tmpDir, "projects", "-home-user-project")
+		if err := os.MkdirAll(projectDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		// Make directory unreadable
+		if err := os.Chmod(projectDir, 0000); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Chmod(projectDir, 0755) // cleanup
+
+		sl := NewSessionLister(tmpDir)
+		_, err := sl.ListSessions("/home/user/project")
+		if err == nil {
+			t.Error("ListSessions() expected error for unreadable directory, got nil")
+		}
+	})
+
+	t.Run("returns empty slice when directory has only non-jsonl files", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		projectDir := filepath.Join(tmpDir, "projects", "-home-user-project")
+		if err := os.MkdirAll(projectDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		// Only non-jsonl files
+		if err := os.WriteFile(filepath.Join(projectDir, "notes.txt"), []byte("hello"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		sl := NewSessionLister(tmpDir)
+		sessions, err := sl.ListSessions("/home/user/project")
+		if err != nil {
+			t.Fatalf("ListSessions() error = %v", err)
+		}
+		if sessions == nil {
+			t.Error("ListSessions() returned nil, want empty slice")
+		}
+		if len(sessions) != 0 {
+			t.Errorf("ListSessions() returned %d sessions, want 0", len(sessions))
+		}
+	})
+
+	t.Run("skips directories and non-jsonl files", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		projectDir := filepath.Join(tmpDir, "projects", "-home-user-project")
+		if err := os.MkdirAll(projectDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Create a subdirectory (should be skipped)
+		if err := os.MkdirAll(filepath.Join(projectDir, "subdir"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		// Create a non-jsonl file (should be skipped)
+		if err := os.WriteFile(filepath.Join(projectDir, "notes.txt"), []byte("hello"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		// Create one valid session file
+		writeJSONLFile(t, filepath.Join(projectDir, "valid-session.jsonl"), []map[string]interface{}{
+			{"type": "user", "timestamp": "2026-01-20T10:00:00Z", "message": map[string]interface{}{"role": "user", "content": "Hello"}},
+			{"type": "assistant", "timestamp": "2026-01-20T10:00:01Z", "message": map[string]interface{}{"role": "assistant", "content": []interface{}{}, "model": "claude-sonnet-4-20250514"}},
+		})
+
+		sl := NewSessionLister(tmpDir)
+		sessions, err := sl.ListSessions("/home/user/project")
+		if err != nil {
+			t.Fatalf("ListSessions() error = %v", err)
+		}
+		if len(sessions) != 1 {
+			t.Fatalf("ListSessions() returned %d sessions, want 1", len(sessions))
+		}
+		if sessions[0].ID != "valid-session" {
+			t.Errorf("sessions[0].ID = %q, want %q", sessions[0].ID, "valid-session")
+		}
+	})
+}
+
+func TestParseSessionFile_EdgeCases(t *testing.T) {
+	t.Run("handles empty content field", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "empty-content.jsonl")
+
+		// Write a user entry with null/empty content
+		lines := []map[string]interface{}{
+			{"type": "user", "timestamp": "2026-01-20T10:00:00Z", "message": map[string]interface{}{"role": "user", "content": ""}},
+		}
+		writeJSONLFile(t, filePath, lines)
+
+		info, err := parseSessionFile(filePath)
+		if err != nil {
+			t.Fatalf("parseSessionFile() error = %v", err)
+		}
+		if info.FirstMessage != "" {
+			t.Errorf("FirstMessage = %q, want empty", info.FirstMessage)
+		}
+	})
+
+	t.Run("uses last summary when multiple exist", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "multi-summary.jsonl")
+
+		lines := []map[string]interface{}{
+			{"type": "user", "timestamp": "2026-01-20T10:00:00Z", "message": map[string]interface{}{"role": "user", "content": "Hello"}},
+			{"type": "summary", "summary": "First summary"},
+			{"type": "summary", "summary": "Second summary"},
+		}
+		writeJSONLFile(t, filePath, lines)
+
+		info, err := parseSessionFile(filePath)
+		if err != nil {
+			t.Fatalf("parseSessionFile() error = %v", err)
+		}
+		if info.Summary != "Second summary" {
+			t.Errorf("Summary = %q, want %q", info.Summary, "Second summary")
+		}
+	})
+
+	t.Run("skips lines with invalid JSON", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "mixed-lines.jsonl")
+
+		// Write manually: invalid line followed by valid
+		f, err := os.Create(filePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.Write([]byte("not json\n"))
+		data, _ := json.Marshal(map[string]interface{}{
+			"type": "user", "timestamp": "2026-01-20T10:00:00Z",
+			"message": map[string]interface{}{"role": "user", "content": "After invalid"},
+		})
+		f.Write(data)
+		f.Write([]byte("\n"))
+		f.Close()
+
+		info, err := parseSessionFile(filePath)
+		if err != nil {
+			t.Fatalf("parseSessionFile() error = %v", err)
+		}
+		if info.FirstMessage != "After invalid" {
+			t.Errorf("FirstMessage = %q, want %q", info.FirstMessage, "After invalid")
+		}
+	})
+
+	t.Run("skips empty lines", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "empty-lines.jsonl")
+
+		f, err := os.Create(filePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.Write([]byte("\n\n"))
+		data, _ := json.Marshal(map[string]interface{}{
+			"type": "user", "timestamp": "2026-01-20T10:00:00Z",
+			"message": map[string]interface{}{"role": "user", "content": "After empty"},
+		})
+		f.Write(data)
+		f.Write([]byte("\n"))
+		f.Close()
+
+		info, err := parseSessionFile(filePath)
+		if err != nil {
+			t.Fatalf("parseSessionFile() error = %v", err)
+		}
+		if info.FirstMessage != "After empty" {
+			t.Errorf("FirstMessage = %q, want %q", info.FirstMessage, "After empty")
+		}
+	})
+
+	t.Run("handles user message with nil content", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "nil-content.jsonl")
+
+		// Write entry where message has no content field
+		f, err := os.Create(filePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.Write([]byte(`{"type":"user","timestamp":"2026-01-20T10:00:00Z","message":{"role":"user"}}` + "\n"))
+		f.Close()
+
+		info, err := parseSessionFile(filePath)
+		if err != nil {
+			t.Fatalf("parseSessionFile() error = %v", err)
+		}
+		if info.FirstMessage != "" {
+			t.Errorf("FirstMessage = %q, want empty (nil content)", info.FirstMessage)
+		}
+	})
+
+	t.Run("handles user message with non-string content", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "array-content.jsonl")
+
+		// User message with array content (unusual but possible)
+		f, err := os.Create(filePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Write with array content that won't unmarshal as string
+		f.Write([]byte(`{"type":"user","timestamp":"2026-01-20T10:00:00Z","message":{"role":"user","content":[{"type":"text","text":"hi"}]}}` + "\n"))
+		f.Close()
+
+		info, err := parseSessionFile(filePath)
+		if err != nil {
+			t.Fatalf("parseSessionFile() error = %v", err)
+		}
+		// extractStringContent returns empty string for non-string content
+		if info.FirstMessage != "" {
+			t.Errorf("FirstMessage = %q, want empty (non-string content)", info.FirstMessage)
 		}
 	})
 }
