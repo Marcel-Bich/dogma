@@ -13,6 +13,9 @@
 # Wails build artifacts
 frontend/package.json.md5
 
+# Generated Wails bindings (per-project, excluded from version control)
+frontend/wailsjs/go/
+
 # Cross-platform compiled binaries
 **/*.exe
 **/*.dll
