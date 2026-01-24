@@ -1,6 +1,6 @@
 {
     "name": "@marcel-bich/dogma",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "CLI installer for DOGMA - a desktop GUI for Claude Code",
     "private": false,
     "license": "MIT",
