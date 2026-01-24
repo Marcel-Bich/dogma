@@ -33,13 +33,13 @@ export function ChatInput({ onSend, onContinue, onCancel, loading }: ChatInputPr
   }
 
   return (
-    <div class="flex items-end gap-3 p-3 bg-black border-t" style={{ borderColor: '#0e4f5c' }}>
-      <span class="pb-2 text-lg select-none" style={{ color: '#22d3ee' }}>&gt;</span>
+    <div class="flex items-end gap-3 p-3 bg-black border-t" style={{ borderColor: 'var(--arctic-border)' }}>
+      <span class="pb-2 text-lg select-none" style={{ color: 'var(--arctic-cyan)' }}>&gt;</span>
       <textarea
         class="flex-1 resize-none p-2 border text-sm glass-input focus:outline-none transition-all duration-200"
         style={{
           background: '#000',
-          color: '#e0f0ff',
+          color: 'var(--arctic-message)',
           borderColor: 'rgba(34,211,238,0.2)',
           borderRadius: '2px',
         }}
@@ -67,7 +67,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading }: ChatInputPr
           disabled={!canSend}
           onClick={handleSend}
           class="px-3 py-1.5 text-xs uppercase tracking-wider border transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-          style={{ color: '#22d3ee', borderColor: '#22d3ee', background: 'transparent' }}
+          style={{ color: 'var(--arctic-cyan)', borderColor: 'var(--arctic-cyan)', background: 'transparent' }}
         >
           EXEC
         </button>
@@ -87,7 +87,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading }: ChatInputPr
             aria-label="Cancel"
             onClick={onCancel}
             class="px-3 py-1.5 text-xs uppercase tracking-wider border transition-all duration-200"
-            style={{ color: '#f87171', borderColor: '#f87171', background: 'transparent' }}
+            style={{ color: 'var(--arctic-error)', borderColor: 'var(--arctic-error)', background: 'transparent' }}
           >
             STOP
           </button>

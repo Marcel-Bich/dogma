@@ -34,7 +34,7 @@ export function SessionList({ onSelect, selectedId, listFn }: SessionListProps) 
 
   if (sessionsLoading.value) {
     return (
-      <div data-testid="sessions-loading" class="p-4 text-sm" style={{ color: '#4a6a7a' }}>
+      <div data-testid="sessions-loading" class="p-4 text-sm" style={{ color: 'var(--arctic-dim)' }}>
         Loading sessions...
       </div>
     )
@@ -50,7 +50,7 @@ export function SessionList({ onSelect, selectedId, listFn }: SessionListProps) 
 
   if (sessions.value.length === 0) {
     return (
-      <div data-testid="sessions-empty" class="p-4 text-sm" style={{ color: '#4a6a7a' }}>
+      <div data-testid="sessions-empty" class="p-4 text-sm" style={{ color: 'var(--arctic-dim)' }}>
         No sessions found
       </div>
     )
@@ -73,9 +73,9 @@ export function SessionList({ onSelect, selectedId, listFn }: SessionListProps) 
                 : 'border-gray-700 border-l-transparent hover:border-l-cyan-800'
             }`}
             style={{
-              color: isSelected ? '#e0f0ff' : '#888',
+              color: isSelected ? 'var(--arctic-message)' : '#888',
               background: isSelected ? undefined : 'transparent',
-              borderLeftColor: isSelected ? '#22d3ee' : undefined,
+              borderLeftColor: isSelected ? 'var(--arctic-cyan)' : undefined,
             }}
           >
             <div class="text-xs truncate">{displayText}</div>

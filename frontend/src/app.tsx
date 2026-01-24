@@ -56,10 +56,10 @@ export function App() {
 
   return (
     <div class="flex flex-col h-screen bg-black relative overflow-hidden scanline">
-      <div class="relative z-10 flex items-center justify-between px-4 py-2.5 bg-black border-b shadow-md bg-gradient-to-b from-black to-black" style={{ borderColor: '#0e4f5c' }}>
+      <div class="relative z-10 flex items-center justify-between px-4 py-2.5 bg-black border-b shadow-md bg-gradient-to-b from-black to-black" style={{ borderColor: 'var(--arctic-border)' }}>
         <span class="text-sm font-semibold tracking-wide select-none" style={{ letterSpacing: '0.15em' }}>
-          <span style={{ color: '#22d3ee' }}>[&gt; </span>
-          <span data-testid="app-title" style={{ color: '#c8c8d8' }}>DOGMA</span>
+          <span style={{ color: 'var(--arctic-cyan)' }}>[&gt; </span>
+          <span data-testid="app-title" style={{ color: 'var(--arctic-text)' }}>DOGMA</span>
         </span>
         <button
           type="button"
@@ -67,7 +67,7 @@ export function App() {
           onClick={() => setShowSessions(!showSessions)}
           class="px-3 py-1 text-xs uppercase transition-colors duration-200"
           style={{ color: '#666', letterSpacing: '0.1em' }}
-          onMouseEnter={(e) => { (e.target as HTMLElement).style.color = '#22d3ee' }}
+          onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'var(--arctic-cyan)' }}
           onMouseLeave={(e) => { (e.target as HTMLElement).style.color = '#666' }}
         >
           Sessions
@@ -77,7 +77,7 @@ export function App() {
         <div
           data-testid="sessions-panel"
           class={`overflow-y-auto bg-black border-r transition-all duration-200 ease-in-out ${showSessions ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}
-          style={{ borderColor: '#0e4f5c' }}
+          style={{ borderColor: 'var(--arctic-border)' }}
         >
           <SessionList onSelect={handleSelectSession} selectedId={sessionId.value || undefined} listFn={backend.listSessions} />
         </div>
@@ -86,7 +86,7 @@ export function App() {
             <MessageList messages={messages.value} loading={loading.value} />
           </div>
           {error.value && (
-            <div data-testid="error-message" class="px-4 py-2 text-sm" style={{ background: 'rgba(127,29,29,0.3)', color: '#f87171' }}>
+            <div data-testid="error-message" class="px-4 py-2 text-sm" style={{ background: 'rgba(127,29,29,0.3)', color: 'var(--arctic-error)' }}>
               {error.value}
             </div>
           )}

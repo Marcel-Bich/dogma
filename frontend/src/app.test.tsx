@@ -90,7 +90,7 @@ describe('App', () => {
       const { getByRole } = render(<App />)
       const btn = getByRole('button', { name: /toggle sessions/i })
       fireEvent.mouseEnter(btn)
-      expect(btn.style.color).toBe('rgb(34, 211, 238)')
+      expect(btn.style.color).toBe('var(--arctic-cyan)')
       fireEvent.mouseLeave(btn)
       expect(btn.style.color).toBe('rgb(102, 102, 102)')
     })
