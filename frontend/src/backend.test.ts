@@ -1,40 +1,59 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import {
+  isWailsEnvironment,
+  createBackend,
+  WailsBackend,
+} from './backend'
+import { MockBackend } from './backend.mock'
 import type { BridgeEvent, SessionInfo } from './types'
+
+// Top-level mock for wails runtime
+type Listener = (...data: unknown[]) => void
+const registeredListeners: Map<string, Listener> = new Map()
+const unsubFns: Array<ReturnType<typeof vi.fn>> = []
+const mockEventsOn = vi.fn((eventName: string, callback: Listener) => {
+  registeredListeners.set(eventName, callback)
+  const unsub = vi.fn(() => { registeredListeners.delete(eventName) })
+  unsubFns.push(unsub)
+  return unsub
+})
+
+vi.mock('../wailsjs/runtime/runtime', () => ({
+  EventsOn: (...args: unknown[]) => mockEventsOn(...(args as [string, Listener])),
+}))
 
 describe('backend adapter', () => {
   beforeEach(() => {
-    vi.resetModules()
+    vi.clearAllMocks()
+    registeredListeners.clear()
+    unsubFns.length = 0
     // Ensure window.go is not defined by default
-    delete (window as Record<string, unknown>)['go']
+    delete (window as unknown as Record<string, unknown>)['go']
   })
 
   afterEach(() => {
-    delete (window as Record<string, unknown>)['go']
+    delete (window as unknown as Record<string, unknown>)['go']
   })
 
   describe('isWailsEnvironment', () => {
-    it('returns false when window.go is undefined', async () => {
-      const { isWailsEnvironment } = await import('./backend')
+    it('returns false when window.go is undefined', () => {
       expect(isWailsEnvironment()).toBe(false)
     })
 
-    it('returns true when window.go is defined', async () => {
-      ;(window as Record<string, unknown>)['go'] = { main: { App: {} } }
-      const { isWailsEnvironment } = await import('./backend')
+    it('returns true when window.go is defined', () => {
+      ;(window as unknown as Record<string, unknown>)['go'] = { main: { App: {} } }
       expect(isWailsEnvironment()).toBe(true)
     })
   })
 
   describe('createBackend', () => {
-    it('returns MockBackend when not in Wails', async () => {
-      const { createBackend } = await import('./backend')
-      const { MockBackend } = await import('./backend.mock')
+    it('returns MockBackend when not in Wails', () => {
       const backend = createBackend()
       expect(backend).toBeInstanceOf(MockBackend)
     })
 
-    it('returns WailsBackend when in Wails environment', async () => {
-      ;(window as Record<string, unknown>)['go'] = {
+    it('returns WailsBackend when in Wails environment', () => {
+      ;(window as unknown as Record<string, unknown>)['go'] = {
         main: {
           App: {
             SendPrompt: vi.fn(),
@@ -44,7 +63,6 @@ describe('backend adapter', () => {
           },
         },
       }
-      const { createBackend, WailsBackend } = await import('./backend')
       const backend = createBackend()
       expect(backend).toBeInstanceOf(WailsBackend)
     })
@@ -60,25 +78,22 @@ describe('backend adapter', () => {
         CancelPrompt: vi.fn().mockResolvedValue(undefined),
         ListSessions: vi.fn().mockResolvedValue([]),
       }
-      ;(window as Record<string, unknown>)['go'] = { main: { App: mockApp } }
+      ;(window as unknown as Record<string, unknown>)['go'] = { main: { App: mockApp } }
     })
 
     it('delegates sendPrompt to window.go.main.App.SendPrompt', async () => {
-      const { WailsBackend } = await import('./backend')
       const backend = new WailsBackend()
       await backend.sendPrompt('hello')
       expect(mockApp.SendPrompt).toHaveBeenCalledWith('hello')
     })
 
     it('delegates continuePrompt to window.go.main.App.ContinuePrompt', async () => {
-      const { WailsBackend } = await import('./backend')
       const backend = new WailsBackend()
       await backend.continuePrompt('resume')
       expect(mockApp.ContinuePrompt).toHaveBeenCalledWith('resume')
     })
 
     it('delegates cancelPrompt to window.go.main.App.CancelPrompt', async () => {
-      const { WailsBackend } = await import('./backend')
       const backend = new WailsBackend()
       await backend.cancelPrompt()
       expect(mockApp.CancelPrompt).toHaveBeenCalled()
@@ -89,24 +104,65 @@ describe('backend adapter', () => {
         { id: 's1', summary: 'test', first_message: 'hi', timestamp: '2026-01-24T10:00:00Z', model: 'opus' },
       ]
       mockApp.ListSessions.mockResolvedValue(sessions)
-      const { WailsBackend } = await import('./backend')
       const backend = new WailsBackend()
       const result = await backend.listSessions()
       expect(result).toEqual(sessions)
     })
 
-    it('onEvent registers callback and returns unsubscribe', async () => {
-      // Mock EventsOn from wails runtime
-      const mockEventsOn = vi.fn().mockReturnValue(() => {})
-      vi.doMock('../wailsjs/runtime/runtime', () => ({
-        EventsOn: mockEventsOn,
-      }))
+    it('onEvent registers listeners for claude:event, claude:done, claude:error', () => {
+      const backend = new WailsBackend()
+      const cb = vi.fn()
+      backend.onEvent(cb)
+      expect(mockEventsOn).toHaveBeenCalledWith('claude:event', expect.any(Function))
+      expect(mockEventsOn).toHaveBeenCalledWith('claude:done', expect.any(Function))
+      expect(mockEventsOn).toHaveBeenCalledWith('claude:error', expect.any(Function))
+    })
 
-      const { WailsBackend } = await import('./backend')
+    it('onEvent forwards claude:event to callback', () => {
+      const backend = new WailsBackend()
+      const cb = vi.fn()
+      backend.onEvent(cb)
+
+      const eventListener = registeredListeners.get('claude:event')
+      expect(eventListener).toBeDefined()
+      const event: BridgeEvent = { type: 'assistant', text: 'hello' }
+      eventListener!(event)
+      expect(cb).toHaveBeenCalledWith(event)
+    })
+
+    it('onEvent forwards claude:done as result event', () => {
+      const backend = new WailsBackend()
+      const cb = vi.fn()
+      backend.onEvent(cb)
+
+      const doneListener = registeredListeners.get('claude:done')
+      expect(doneListener).toBeDefined()
+      doneListener!()
+      expect(cb).toHaveBeenCalledWith({ type: 'result', result: 'done' })
+    })
+
+    it('onEvent forwards claude:error as error result event', () => {
+      const backend = new WailsBackend()
+      const cb = vi.fn()
+      backend.onEvent(cb)
+
+      const errorListener = registeredListeners.get('claude:error')
+      expect(errorListener).toBeDefined()
+      errorListener!('connection lost')
+      expect(cb).toHaveBeenCalledWith({ type: 'result', result: 'connection lost', is_error: true })
+    })
+
+    it('onEvent returns unsubscribe that calls all unsub functions', () => {
       const backend = new WailsBackend()
       const cb = vi.fn()
       const unsub = backend.onEvent(cb)
+
       expect(typeof unsub).toBe('function')
+      unsub()
+      // Each internal EventsOn unsub should have been called
+      for (const fn of unsubFns) {
+        expect(fn).toHaveBeenCalled()
+      }
     })
   })
 
@@ -137,7 +193,7 @@ describe('backend adapter', () => {
       await vi.runAllTimersAsync()
 
       expect(cb).toHaveBeenCalled()
-      const calls = cb.mock.calls.map((c: [BridgeEvent]) => c[0])
+      const calls = cb.mock.calls.map((c: unknown[]) => c[0] as BridgeEvent)
       // Should have at least one assistant event and a result event
       expect(calls.some((e: BridgeEvent) => e.type === 'assistant')).toBe(true)
       expect(calls.some((e: BridgeEvent) => e.type === 'result')).toBe(true)
@@ -155,7 +211,7 @@ describe('backend adapter', () => {
       await vi.runAllTimersAsync()
 
       expect(cb).toHaveBeenCalled()
-      const calls = cb.mock.calls.map((c: [BridgeEvent]) => c[0])
+      const calls = cb.mock.calls.map((c: unknown[]) => c[0] as BridgeEvent)
       expect(calls.some((e: BridgeEvent) => e.type === 'assistant')).toBe(true)
       expect(calls.some((e: BridgeEvent) => e.type === 'result')).toBe(true)
       vi.useRealTimers()
@@ -172,7 +228,7 @@ describe('backend adapter', () => {
       await vi.runAllTimersAsync()
 
       expect(cb).toHaveBeenCalled()
-      const calls = cb.mock.calls.map((c: [BridgeEvent]) => c[0])
+      const calls = cb.mock.calls.map((c: unknown[]) => c[0] as BridgeEvent)
       expect(calls.some((e: BridgeEvent) => e.type === 'result')).toBe(true)
       vi.useRealTimers()
     })
