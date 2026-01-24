@@ -1,6 +1,5 @@
 import { useEffect } from 'preact/hooks'
 import { sessions, sessionsLoading, sessionsError, loadSessions } from '../state'
-import { ListSessions } from '../../wailsjs/go/main/App'
 import type { SessionInfo } from '../types'
 
 export function formatRelativeTime(isoTimestamp: string): string {
@@ -25,12 +24,12 @@ export function formatRelativeTime(isoTimestamp: string): string {
 interface SessionListProps {
   onSelect: (sessionId: string) => void
   selectedId?: string
-  listFn?: () => Promise<SessionInfo[]>
+  listFn: () => Promise<SessionInfo[]>
 }
 
 export function SessionList({ onSelect, selectedId, listFn }: SessionListProps) {
   useEffect(() => {
-    loadSessions(listFn || ListSessions)
+    loadSessions(listFn)
   }, [])
 
   if (sessionsLoading.value) {

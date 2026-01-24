@@ -259,5 +259,14 @@ describe('App', () => {
       expect(consoleSpy).toHaveBeenCalledWith('Selected session:', 'click-session')
       consoleSpy.mockRestore()
     })
+
+    it('passes backend.listSessions as listFn to SessionList', () => {
+      const loadSessionsSpy = vi.spyOn(state, 'loadSessions').mockResolvedValue(undefined)
+      const { getByRole } = render(<App />)
+      const toggleBtn = getByRole('button', { name: /toggle sessions/i })
+      fireEvent.click(toggleBtn)
+      expect(loadSessionsSpy).toHaveBeenCalledWith(mockBackend.listSessions)
+      loadSessionsSpy.mockRestore()
+    })
   })
 })
