@@ -4,10 +4,6 @@ import { SessionList, formatRelativeTime } from './SessionList'
 import * as state from '../state'
 import type { SessionInfo } from '../types'
 
-vi.mock('../../wailsjs/go/main/App', () => ({
-  ListSessions: vi.fn().mockResolvedValue([]),
-}))
-
 // Mock loadSessions to prevent useEffect from changing state in display tests
 const mockLoadSessions = vi.spyOn(state, 'loadSessions').mockResolvedValue(undefined)
 

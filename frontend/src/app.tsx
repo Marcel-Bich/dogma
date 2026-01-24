@@ -69,7 +69,7 @@ export function App() {
       <div class="flex flex-1 overflow-hidden">
         {showSessions && (
           <div data-testid="sessions-panel" class="w-64 border-r border-gray-700 overflow-y-auto bg-gray-850">
-            <SessionList onSelect={handleSelectSession} selectedId={sessionId.value || undefined} />
+            <SessionList onSelect={handleSelectSession} selectedId={sessionId.value || undefined} listFn={backend.listSessions} />
           </div>
         )}
         <div class="flex flex-col flex-1">
