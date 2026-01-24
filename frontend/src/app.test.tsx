@@ -58,6 +58,22 @@ describe('App', () => {
       expect(root.className).toContain('flex-col')
       expect(root.className).toContain('h-screen')
     })
+
+    it('renders DOGMA title in header', () => {
+      const { getByText } = render(<App />)
+      const title = getByText('DOGMA')
+      expect(title).toBeTruthy()
+      expect(title.tagName).toBe('SPAN')
+      expect(title.className).toContain('font-semibold')
+      expect(title.className).toContain('tracking-wide')
+    })
+
+    it('header has justify-between for title and button layout', () => {
+      const { getByText } = render(<App />)
+      const title = getByText('DOGMA')
+      const header = title.parentElement as HTMLElement
+      expect(header.className).toContain('justify-between')
+    })
   })
 
   describe('backend event listener', () => {

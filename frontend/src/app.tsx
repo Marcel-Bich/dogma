@@ -56,7 +56,8 @@ export function App() {
 
   return (
     <div class="flex flex-col h-screen bg-gray-900">
-      <div class="flex items-center px-3 py-2 bg-gray-800 border-b border-gray-700">
+      <div class="flex items-center justify-between px-3 py-2 bg-gray-800 border-b border-gray-700">
+        <span class="text-sm font-semibold tracking-wide text-gray-300 select-none">DOGMA</span>
         <button
           type="button"
           aria-label="Toggle sessions"
