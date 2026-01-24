@@ -47,3 +47,11 @@ export interface ChatMessage {
   blocks: MessageBlock[]
   timestamp: number
 }
+
+export interface SessionInfo {
+  id: string
+  summary: string
+  first_message: string
+  timestamp: string
+  model: string
+}
