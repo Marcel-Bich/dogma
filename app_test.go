@@ -776,3 +776,31 @@ func TestListSessions_FallsBackToGetwdWhenWorkingDirEmpty(t *testing.T) {
 		t.Error("expected non-empty project path from os.Getwd() fallback")
 	}
 }
+
+func TestListSessions_GetwdError(t *testing.T) {
+	lister := &mockSessionLister{
+		listSessionsFn: func(projectPath string) ([]claude.SessionInfo, error) {
+			t.Fatal("lister should not be called when getwd fails")
+			return nil, nil
+		},
+	}
+
+	app := &App{
+		lister:     lister,
+		workingDir: "",
+		getwdFunc: func() (string, error) {
+			return "", errors.New("getwd failed")
+		},
+	}
+
+	result, err := app.ListSessions()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err.Error() != "getwd failed" {
+		t.Errorf("expected 'getwd failed', got %q", err.Error())
+	}
+	if result != nil {
+		t.Errorf("expected nil result, got %v", result)
+	}
+}

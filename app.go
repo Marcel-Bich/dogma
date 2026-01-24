@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 
 	"github.com/Marcel-Bich/dogma/internal/claude"
 	"github.com/Marcel-Bich/dogma/internal/updater"
@@ -21,6 +22,11 @@ type eventEmitter interface {
 	Emit(eventName string, data ...interface{})
 }
 
+// sessionLister abstracts session listing for testability.
+type sessionLister interface {
+	ListSessions(projectPath string) ([]claude.SessionInfo, error)
+}
+
 // updateApplier abstracts the update apply call for testability.
 type updateApplier func(ctx context.Context, info *updater.UpdateInfo) error
 
@@ -35,11 +41,14 @@ func (e *wailsEmitter) Emit(eventName string, data ...interface{}) {
 
 // App struct
 type App struct {
-	ctx        context.Context
-	spawner    promptSpawner
-	emitter    eventEmitter
+	ctx         context.Context
+	spawner     promptSpawner
+	lister      sessionLister
+	emitter     eventEmitter
 	applyUpdate updateApplier
-	updateInfo *updater.UpdateInfo
+	updateInfo  *updater.UpdateInfo
+	workingDir  string
+	getwdFunc   func() (string, error)
 }
 
 // NewApp creates a new App application struct
@@ -54,6 +63,7 @@ func (a *App) startup(ctx context.Context) {
 	a.spawner = claude.NewSpawner(claude.SpawnerConfig{
 		ClaudePath: "claude",
 	})
+	a.lister = claude.NewSessionLister("")
 	a.emitter = &wailsEmitter{ctx: ctx}
 	a.applyUpdate = updater.ApplyUpdate
 
@@ -88,6 +98,23 @@ func (a *App) ContinuePrompt(prompt string) {
 // CancelPrompt cancels the currently running Claude process.
 func (a *App) CancelPrompt() {
 	a.spawner.Cancel()
+}
+
+// ListSessions returns session metadata for the current project.
+func (a *App) ListSessions() ([]claude.SessionInfo, error) {
+	dir := a.workingDir
+	if dir == "" {
+		getwdFn := a.getwdFunc
+		if getwdFn == nil {
+			getwdFn = os.Getwd
+		}
+		cwd, err := getwdFn()
+		if err != nil {
+			return nil, err
+		}
+		dir = cwd
+	}
+	return a.lister.ListSessions(dir)
 }
 
 // ApplyUpdate downloads and applies the pending update.
