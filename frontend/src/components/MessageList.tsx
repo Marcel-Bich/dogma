@@ -39,6 +39,18 @@ export function MessageList({ messages, loading }: Props) {
                 animation: 'pulse-ring 3.5s ease-in-out infinite 1.5s',
               }}
             />
+            <span
+              data-testid="app-title"
+              class="absolute text-xs uppercase select-none"
+              style={{
+                color: 'var(--arctic-dim)',
+                opacity: 0.5,
+                letterSpacing: '0.3em',
+                fontWeight: 300,
+              }}
+            >
+              DOGMA
+            </span>
           </div>
           <span class="text-xs" style={{ color: 'var(--arctic-dim)' }}>
             Send a prompt to start

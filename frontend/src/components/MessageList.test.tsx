@@ -18,6 +18,30 @@ describe('MessageList', () => {
       expect(getByText('Send a prompt to start')).toBeTruthy()
     })
 
+    it('shows DOGMA branding in empty state pulse ring', () => {
+      const { getByTestId } = render(
+        <MessageList messages={[]} loading={false} />
+      )
+      const title = getByTestId('app-title')
+      expect(title).toBeTruthy()
+      expect(title.textContent).toBe('DOGMA')
+    })
+
+    it('does not show DOGMA branding when messages exist', () => {
+      const messages: ChatMessage[] = [
+        {
+          id: 'msg-1',
+          role: 'assistant',
+          blocks: [{ type: 'text', content: 'hello' }],
+          timestamp: 1000,
+        },
+      ]
+      const { queryByTestId } = render(
+        <MessageList messages={messages} loading={false} />
+      )
+      expect(queryByTestId('app-title')).toBeNull()
+    })
+
     it('does not render empty state when messages exist', () => {
       const messages: ChatMessage[] = [
         {
