@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   hexToHsl,
+  hexToRgb,
   hslToHex,
   deriveThemeColors,
   PRESETS,
@@ -38,6 +39,36 @@ describe('themes', () => {
 
     it('converts pure blue #0000ff to [240, 100, 50]', () => {
       expect(hexToHsl('#0000ff')).toEqual([240, 100, 50])
+    })
+  })
+
+  describe('hexToRgb', () => {
+    it('converts #22d3ee to "34, 211, 238"', () => {
+      expect(hexToRgb('#22d3ee')).toBe('34, 211, 238')
+    })
+
+    it('converts #ff0000 to "255, 0, 0"', () => {
+      expect(hexToRgb('#ff0000')).toBe('255, 0, 0')
+    })
+
+    it('converts #00ff00 to "0, 255, 0"', () => {
+      expect(hexToRgb('#00ff00')).toBe('0, 255, 0')
+    })
+
+    it('converts #0000ff to "0, 0, 255"', () => {
+      expect(hexToRgb('#0000ff')).toBe('0, 0, 255')
+    })
+
+    it('converts #000000 to "0, 0, 0"', () => {
+      expect(hexToRgb('#000000')).toBe('0, 0, 0')
+    })
+
+    it('converts #ffffff to "255, 255, 255"', () => {
+      expect(hexToRgb('#ffffff')).toBe('255, 255, 255')
+    })
+
+    it('converts #a78bfa to "167, 139, 250"', () => {
+      expect(hexToRgb('#a78bfa')).toBe('167, 139, 250')
     })
   })
 
@@ -350,6 +381,22 @@ describe('themes', () => {
       expect(style.getPropertyValue('--arctic-black')).toBe(colors.black)
     })
 
+    it('sets --arctic-accent-rgb from accent color', () => {
+      const colors = deriveThemeColors('#22d3ee')
+      applyTheme(colors)
+
+      const style = document.documentElement.style
+      expect(style.getPropertyValue('--arctic-accent-rgb')).toBe('34, 211, 238')
+    })
+
+    it('sets --arctic-accent-rgb correctly for non-default accent', () => {
+      const colors = deriveThemeColors('#a78bfa')
+      applyTheme(colors)
+
+      const style = document.documentElement.style
+      expect(style.getPropertyValue('--arctic-accent-rgb')).toBe('167, 139, 250')
+    })
+
     it('overwrites previously applied theme', () => {
       const colors1 = deriveThemeColors('#ff0000')
       const colors2 = deriveThemeColors('#00ff00')
@@ -360,6 +407,7 @@ describe('themes', () => {
       const style = document.documentElement.style
       expect(style.getPropertyValue('--arctic-cyan')).toBe(colors2.accent)
       expect(style.getPropertyValue('--arctic-cyan-dark')).toBe(colors2.accentDark)
+      expect(style.getPropertyValue('--arctic-accent-rgb')).toBe('0, 255, 0')
     })
   })
 })

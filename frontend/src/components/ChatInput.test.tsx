@@ -93,24 +93,21 @@ describe('ChatInput', () => {
   })
 
   describe('textarea focus effects', () => {
-    it('applies cyan glow on focus', () => {
+    it('applies accent glow on focus using CSS variable', () => {
       const { getByLabelText } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
       fireEvent.focus(textarea)
-      expect(textarea.style.borderColor).toContain('34')
-      expect(textarea.style.borderColor).toContain('211')
-      expect(textarea.style.borderColor).toContain('238')
+      expect(textarea.style.borderColor).toBe('rgba(var(--arctic-accent-rgb), 0.5)')
       expect(textarea.style.boxShadow).toContain('8px')
-      expect(textarea.style.boxShadow).toContain('rgba')
+      expect(textarea.style.boxShadow).toContain('var(--arctic-accent-rgb)')
     })
 
-    it('removes glow on blur', () => {
+    it('removes glow on blur using CSS variable', () => {
       const { getByLabelText } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
       fireEvent.focus(textarea)
       fireEvent.blur(textarea)
-      expect(textarea.style.borderColor).toContain('34')
-      expect(textarea.style.borderColor).toContain('238')
+      expect(textarea.style.borderColor).toBe('rgba(var(--arctic-accent-rgb), 0.2)')
       expect(textarea.style.boxShadow).toBe('none')
     })
   })
