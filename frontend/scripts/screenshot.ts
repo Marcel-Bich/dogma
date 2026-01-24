@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { existsSync, mkdirSync } from 'fs'
+import { existsSync, mkdirSync, copyFileSync } from 'fs'
 import { join } from 'path'
 
 const SCREENSHOTS_DIR = join(import.meta.dirname, '..', '..', 'screenshots')
@@ -20,7 +20,10 @@ async function takeScreenshot(name?: string): Promise<string> {
   try {
     await page.goto(DEV_SERVER_URL, { waitUntil: 'networkidle', timeout: 10000 })
     await page.screenshot({ path: filepath, fullPage: false })
+    const currentStatePath = join(SCREENSHOTS_DIR, 'current-state.png')
+    copyFileSync(filepath, currentStatePath)
     console.log(`Screenshot saved: ${filepath}`)
+    console.log(`Current state updated: ${currentStatePath}`)
   } catch (error) {
     console.error('Screenshot failed:', error)
     throw error

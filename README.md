@@ -1,7 +1,7 @@
 <h1 align="center">dogma</h1>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Marcel-Bich/marcel-bich-claude-marketplace/refs/heads/main/assets/repo-banner_sm1.jpg" alt="dogma banner" width="800">
+  <img src="screenshots/current-state.png" alt="dogma - current state" width="800">
 </p>
 
 <p align="center">
