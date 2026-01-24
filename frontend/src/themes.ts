@@ -17,6 +17,13 @@ export interface ThemePreset {
   colors: ThemeColors
 }
 
+export function hexToRgb(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `${r}, ${g}, ${b}`
+}
+
 export function hexToHsl(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16) / 255
   const g = parseInt(hex.slice(3, 5), 16) / 255
@@ -146,6 +153,7 @@ export function applyTheme(colors: ThemeColors): void {
   style.setProperty('--arctic-cyan', colors.accent)
   style.setProperty('--arctic-cyan-dark', colors.accentDark)
   style.setProperty('--arctic-cyan-light', colors.accentLight)
+  style.setProperty('--arctic-accent-rgb', hexToRgb(colors.accent))
   style.setProperty('--arctic-border', colors.border)
   style.setProperty('--arctic-text', colors.text)
   style.setProperty('--arctic-dim', colors.dim)

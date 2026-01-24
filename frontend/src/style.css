@@ -5,6 +5,7 @@
   --arctic-cyan: #22d3ee;
   --arctic-cyan-dark: #06b6d4;
   --arctic-cyan-light: #67e8f9;
+  --arctic-accent-rgb: 34, 211, 238;
   --arctic-border: #0e4f5c;
   --arctic-text: #c8c8d8;
   --arctic-dim: #4a6a7a;
@@ -53,18 +54,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.2);
+  background: rgba(var(--arctic-accent-rgb), 0.2);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(34, 211, 238, 0.4);
+  background: rgba(var(--arctic-accent-rgb), 0.4);
 }
 
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(34, 211, 238, 0.2) var(--arctic-black);
+  scrollbar-color: rgba(var(--arctic-accent-rgb), 0.2) var(--arctic-black);
 }
 
 /* Glass input effect */
@@ -81,7 +82,7 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  background: rgba(34, 211, 238, 0.02);
+  background: rgba(var(--arctic-accent-rgb), 0.02);
   animation: scanline 20s linear infinite;
   pointer-events: none;
 }

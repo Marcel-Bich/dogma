@@ -26,7 +26,7 @@ export function MessageList({ messages, loading }: Props) {
               style={{
                 width: '50px',
                 height: '50px',
-                border: '1px solid rgba(34,211,238,0.5)',
+                border: '1px solid rgba(var(--arctic-accent-rgb), 0.5)',
                 animation: 'pulse-ring 3s ease-in-out infinite',
               }}
             />
@@ -35,7 +35,7 @@ export function MessageList({ messages, loading }: Props) {
               style={{
                 width: '80px',
                 height: '80px',
-                border: '1px solid rgba(34,211,238,0.25)',
+                border: '1px solid rgba(var(--arctic-accent-rgb), 0.25)',
                 animation: 'pulse-ring 3.5s ease-in-out infinite 1.5s',
               }}
             />
@@ -74,7 +74,7 @@ export function MessageList({ messages, loading }: Props) {
               style={{
                 width: '50px',
                 height: '50px',
-                border: '1px solid rgba(34,211,238,0.5)',
+                border: '1px solid rgba(var(--arctic-accent-rgb), 0.5)',
                 animation: 'pulse-ring-fast 1.5s ease-in-out infinite',
               }}
             />
@@ -83,7 +83,7 @@ export function MessageList({ messages, loading }: Props) {
               style={{
                 width: '80px',
                 height: '80px',
-                border: '1px solid rgba(34,211,238,0.25)',
+                border: '1px solid rgba(var(--arctic-accent-rgb), 0.25)',
                 animation: 'pulse-ring-fast 1.8s ease-in-out infinite 0.75s',
               }}
             />

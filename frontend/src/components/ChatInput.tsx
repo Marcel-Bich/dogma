@@ -39,17 +39,17 @@ export function ChatInput({ onSend, onContinue, onCancel, loading }: ChatInputPr
         style={{
           background: '#000',
           color: 'var(--arctic-message)',
-          borderColor: 'rgba(34,211,238,0.2)',
+          borderColor: 'rgba(var(--arctic-accent-rgb), 0.2)',
           borderRadius: '2px',
         }}
         onFocus={(e) => {
           const t = e.target as HTMLTextAreaElement
-          t.style.borderColor = 'rgba(34,211,238,0.5)'
-          t.style.boxShadow = '0 0 8px rgba(34,211,238,0.3)'
+          t.style.borderColor = 'rgba(var(--arctic-accent-rgb), 0.5)'
+          t.style.boxShadow = '0 0 8px rgba(var(--arctic-accent-rgb), 0.3)'
         }}
         onBlur={(e) => {
           const t = e.target as HTMLTextAreaElement
-          t.style.borderColor = 'rgba(34,211,238,0.2)'
+          t.style.borderColor = 'rgba(var(--arctic-accent-rgb), 0.2)'
           t.style.boxShadow = 'none'
         }}
         placeholder="..."
