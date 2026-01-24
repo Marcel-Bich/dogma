@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            runner: ubuntu-22.04
+          - goos: darwin
+            goarch: amd64
+            runner: macos-13
+          - goos: darwin
+            goarch: arm64
+            runner: macos-14
+          - goos: windows
+            goarch: amd64
+            runner: windows-latest
+          # TODO: linux/arm64 (cross-compile with CGO for WebKit2GTK is complex)
+          # - goos: linux
+          #   goarch: arm64
+          #   runner: ubuntu-22.04
+          # TODO: windows/arm64 (cross-compile, can add later)
+          # - goos: windows
+          #   goarch: arm64
+          #   runner: windows-latest
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Linux dependencies
+        if: matrix.goos == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build
+        shell: bash
+        run: |
+          wails build -nopackage -ldflags "-w -s -X 'github.com/Marcel-Bich/dogma/internal/updater.Version=${{ github.ref_name }}'"
+
+      - name: Rename binary (unix)
+        if: matrix.goos != 'windows'
+        run: mv build/bin/dogma dogma-${{ matrix.goos }}-${{ matrix.goarch }}
+
+      - name: Rename binary (windows)
+        if: matrix.goos == 'windows'
+        shell: bash
+        run: mv build/bin/dogma.exe dogma-${{ matrix.goos }}-${{ matrix.goarch }}.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dogma-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dogma-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
