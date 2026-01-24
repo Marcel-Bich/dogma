@@ -56,27 +56,27 @@ export function handleBridgeEvent(event: BridgeEvent): void {
     }
 
     case 'result': {
-      const block: MessageBlock = event.is_error
-        ? { type: 'error', content: event.result || '' }
-        : { type: 'result', content: event.result || '' }
+      if (event.is_error) {
+        const block: MessageBlock = { type: 'error', content: event.result || '' }
 
-      if (!currentMessage || finalized) {
-        currentMessage = {
-          id: generateId(),
-          role: 'assistant',
-          blocks: [],
-          timestamp: Date.now(),
-        }
-        finalized = false
-        currentMessage.blocks = [block]
-        messages.value = [...messages.value, { ...currentMessage }]
-      } else {
-        currentMessage.blocks = [...currentMessage.blocks, block]
-        const existing = messages.value.findIndex((m) => m.id === currentMessage!.id)
-        if (existing >= 0) {
-          const updated = [...messages.value]
-          updated[existing] = { ...currentMessage }
-          messages.value = updated
+        if (!currentMessage || finalized) {
+          currentMessage = {
+            id: generateId(),
+            role: 'assistant',
+            blocks: [],
+            timestamp: Date.now(),
+          }
+          finalized = false
+          currentMessage.blocks = [block]
+          messages.value = [...messages.value, { ...currentMessage }]
+        } else {
+          currentMessage.blocks = [...currentMessage.blocks, block]
+          const existing = messages.value.findIndex((m) => m.id === currentMessage!.id)
+          if (existing >= 0) {
+            const updated = [...messages.value]
+            updated[existing] = { ...currentMessage }
+            messages.value = updated
+          }
         }
       }
       finalized = true

@@ -108,7 +108,7 @@ describe('state', () => {
       })
     })
 
-    it('with type="result" creates ResultBlock', () => {
+    it('successful result event finalizes message without adding a block', () => {
       // First create a message via assistant event
       const assistantEvent: BridgeEvent = { type: 'assistant', text: 'working...' }
       handleBridgeEvent(assistantEvent)
@@ -116,10 +116,11 @@ describe('state', () => {
       const resultEvent: BridgeEvent = { type: 'result', result: 'done!' }
       handleBridgeEvent(resultEvent)
       expect(messages.value).toHaveLength(1)
-      const blocks = messages.value[0].blocks
-      expect(blocks[blocks.length - 1]).toEqual({
-        type: 'result',
-        content: 'done!',
+      // Only the text block from the assistant event, no result block
+      expect(messages.value[0].blocks).toHaveLength(1)
+      expect(messages.value[0].blocks[0]).toEqual({
+        type: 'text',
+        content: 'working...',
       })
     })
 
@@ -170,13 +171,24 @@ describe('state', () => {
       expect(messages.value[0].blocks[2].type).toBe('tool_use')
     })
 
-    it('result event without prior assistant creates a new message', () => {
+    it('successful orphan result event does not create a message', () => {
       const resultEvent: BridgeEvent = { type: 'result', result: 'orphan result' }
+      handleBridgeEvent(resultEvent)
+      // Successful result without prior assistant should not create a visible message
+      expect(messages.value).toHaveLength(0)
+    })
+
+    it('error orphan result event creates a message with ErrorBlock', () => {
+      const resultEvent: BridgeEvent = {
+        type: 'result',
+        result: 'orphan error',
+        is_error: true,
+      }
       handleBridgeEvent(resultEvent)
       expect(messages.value).toHaveLength(1)
       expect(messages.value[0].blocks[0]).toEqual({
-        type: 'result',
-        content: 'orphan result',
+        type: 'error',
+        content: 'orphan error',
       })
     })
 
@@ -193,13 +205,15 @@ describe('state', () => {
       expect(sessionId.value).toBe('initial')
     })
 
-    it('result event with empty result uses empty string', () => {
+    it('successful result with empty result does not add a block', () => {
+      const assistantEvent: BridgeEvent = { type: 'assistant', text: 'hi' }
+      handleBridgeEvent(assistantEvent)
+
       const event: BridgeEvent = { type: 'result' }
       handleBridgeEvent(event)
-      expect(messages.value[0].blocks[0]).toEqual({
-        type: 'result',
-        content: '',
-      })
+      // Only the text block, no result block
+      expect(messages.value[0].blocks).toHaveLength(1)
+      expect(messages.value[0].blocks[0].type).toBe('text')
     })
 
     it('tool_use event without tool_input uses empty string', () => {
@@ -238,7 +252,12 @@ describe('state', () => {
       handleBridgeEvent(ev3)
 
       expect(messages.value).toHaveLength(2)
-      expect(messages.value[0].blocks).toHaveLength(2)
+      // First message: only the text block (result does not add a block)
+      expect(messages.value[0].blocks).toHaveLength(1)
+      expect(messages.value[0].blocks[0]).toEqual({
+        type: 'text',
+        content: 'first turn',
+      })
       expect(messages.value[1].blocks[0]).toEqual({
         type: 'text',
         content: 'second turn',
