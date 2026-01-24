@@ -44,7 +44,6 @@ export function MessageList({ messages, loading }: Props) {
               class="absolute text-xs uppercase select-none"
               style={{
                 color: 'var(--arctic-dim)',
-                opacity: 0.5,
                 letterSpacing: '0.3em',
                 fontWeight: 300,
               }}

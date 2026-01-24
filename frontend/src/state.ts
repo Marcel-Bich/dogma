@@ -20,6 +20,7 @@ export const menuOpen = signal(false)
 export const settingsOpen = signal(false)
 export const activeThemeId = signal<string>('arctic-pro')
 export const customAccent = signal<string | null>(null)
+export const intensity = signal(50)
 
 let currentMessage: ChatMessage | null = null
 let finalized = false
@@ -136,6 +137,10 @@ export function setCustomAccent(hex: string | null): void {
   customAccent.value = hex
 }
 
+export function setIntensity(val: number): void {
+  intensity.value = val
+}
+
 export async function loadSessions(listFn: () => Promise<SessionInfo[]>): Promise<void> {
   sessionsLoading.value = true
   try {
@@ -161,6 +166,7 @@ export function resetState(): void {
   settingsOpen.value = false
   activeThemeId.value = 'arctic-pro'
   customAccent.value = null
+  intensity.value = 50
   currentMessage = null
   finalized = false
   idCounter = 0

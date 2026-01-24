@@ -27,7 +27,7 @@ vi.mock('./backend', () => ({
 
 // Mock themes module
 vi.mock('./themes', () => ({
-  loadTheme: vi.fn(() => ({ presetId: 'arctic-pro', customAccent: null })),
+  loadTheme: vi.fn(() => ({ presetId: 'arctic-pro', customAccent: null, intensity: 50 })),
   getThemeColors: vi.fn(() => ({
     accent: '#22d3ee',
     accentDark: '#0e7490',
@@ -41,6 +41,7 @@ vi.mock('./themes', () => ({
     black: '#000000',
   })),
   applyTheme: vi.fn(),
+  applyIntensity: vi.fn(),
   saveTheme: vi.fn(),
   PRESETS: [
     { id: 'arctic-pro', name: 'Arctic Pro', colors: { accent: '#22d3ee', accentDark: '#0e7490', accentLight: '#67e8f9', border: '#1e3a4a', text: '#c8c8d8', dim: '#4a6670', message: '#e0f0ff', thinking: '#3a6670', error: '#f87171', black: '#000000' } },
@@ -296,13 +297,15 @@ describe('App', () => {
       expect(themes.loadTheme).toHaveBeenCalled()
       expect(themes.getThemeColors).toHaveBeenCalledWith('arctic-pro', null)
       expect(themes.applyTheme).toHaveBeenCalled()
+      expect(themes.applyIntensity).toHaveBeenCalledWith(50, '#22d3ee')
     })
 
     it('sets active theme and custom accent from stored values', () => {
-      vi.mocked(themes.loadTheme).mockReturnValueOnce({ presetId: 'pulse', customAccent: '#ff0000' })
+      vi.mocked(themes.loadTheme).mockReturnValueOnce({ presetId: 'pulse', customAccent: '#ff0000', intensity: 70 })
       render(<App />)
       expect(state.activeThemeId.value).toBe('pulse')
       expect(state.customAccent.value).toBe('#ff0000')
+      expect(state.intensity.value).toBe(70)
     })
 
     it('selecting a preset updates theme and saves', () => {
@@ -316,7 +319,8 @@ describe('App', () => {
       expect(state.customAccent.value).toBeNull()
       expect(themes.getThemeColors).toHaveBeenCalledWith('pulse', null)
       expect(themes.applyTheme).toHaveBeenCalled()
-      expect(themes.saveTheme).toHaveBeenCalledWith('pulse', null)
+      expect(themes.applyIntensity).toHaveBeenCalled()
+      expect(themes.saveTheme).toHaveBeenCalledWith('pulse', null, 50)
     })
 
     it('custom accent updates theme and saves', () => {
@@ -330,7 +334,8 @@ describe('App', () => {
       expect(state.customAccent.value).toBe('#ff5500')
       expect(themes.getThemeColors).toHaveBeenCalledWith('arctic-pro', '#ff5500')
       expect(themes.applyTheme).toHaveBeenCalled()
-      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', '#ff5500')
+      expect(themes.applyIntensity).toHaveBeenCalled()
+      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', '#ff5500', 50)
     })
   })
 

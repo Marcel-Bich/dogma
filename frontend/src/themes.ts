@@ -120,20 +120,24 @@ export const PRESETS: ThemePreset[] = [
 const STORAGE_KEY = 'dogma-theme'
 const DEFAULT_PRESET_ID = 'arctic-pro'
 
-export function saveTheme(presetId: string, customAccent: string | null): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ presetId, customAccent }))
+export function saveTheme(presetId: string, customAccent: string | null, intensity: number): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ presetId, customAccent, intensity }))
 }
 
-export function loadTheme(): { presetId: string; customAccent: string | null } {
+export function loadTheme(): { presetId: string; customAccent: string | null; intensity: number } {
   const stored = localStorage.getItem(STORAGE_KEY)
   if (!stored) {
-    return { presetId: DEFAULT_PRESET_ID, customAccent: null }
+    return { presetId: DEFAULT_PRESET_ID, customAccent: null, intensity: 50 }
   }
   try {
     const parsed = JSON.parse(stored)
-    return { presetId: parsed.presetId, customAccent: parsed.customAccent }
+    return {
+      presetId: parsed.presetId,
+      customAccent: parsed.customAccent,
+      intensity: parsed.intensity ?? 50,
+    }
   } catch {
-    return { presetId: DEFAULT_PRESET_ID, customAccent: null }
+    return { presetId: DEFAULT_PRESET_ID, customAccent: null, intensity: 50 }
   }
 }
 
@@ -161,4 +165,15 @@ export function applyTheme(colors: ThemeColors): void {
   style.setProperty('--arctic-thinking', colors.thinking)
   style.setProperty('--arctic-error', colors.error)
   style.setProperty('--arctic-black', colors.black)
+}
+
+export function applyIntensity(intensityVal: number, accent: string): void {
+  const [h] = hexToHsl(accent)
+  const dimColor = hslToHex(h, 20, intensityVal)
+  const style = document.documentElement.style
+  style.setProperty('--arctic-dim', dimColor)
+
+  // Brand opacity: linear scale from 0.4 (at 30) to 0.9 (at 90)
+  const opacity = ((intensityVal - 30) / 60) * 0.5 + 0.4
+  style.setProperty('--arctic-brand-opacity', opacity.toFixed(2).replace(/0$/, ''))
 }
