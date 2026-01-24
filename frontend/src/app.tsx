@@ -1,12 +1,15 @@
 import { useEffect } from 'preact/hooks'
+import { useState } from 'preact/hooks'
 import { EventsOn } from '../wailsjs/runtime/runtime'
 import { SendPrompt, ContinuePrompt, CancelPrompt } from '../wailsjs/go/main/App'
 import { ChatInput } from './components/ChatInput'
 import { MessageList } from './components/MessageList'
+import { SessionList } from './components/SessionList'
 import {
   messages,
   loading,
   error,
+  sessionId,
   handleBridgeEvent,
   setLoading,
   setError,
@@ -14,6 +17,8 @@ import {
 import type { BridgeEvent } from './types'
 
 export function App() {
+  const [showSessions, setShowSessions] = useState(false)
+
   useEffect(() => {
     const unsubEvent = EventsOn('claude:event', (event: BridgeEvent) => {
       handleBridgeEvent(event)
@@ -51,22 +56,45 @@ export function App() {
     CancelPrompt()
   }
 
+  function handleSelectSession(id: string) {
+    console.log('Selected session:', id)
+  }
+
   return (
     <div class="flex flex-col h-screen bg-gray-900">
-      <div class="flex-1 overflow-y-auto">
-        <MessageList messages={messages.value} loading={loading.value} />
+      <div class="flex items-center px-3 py-2 bg-gray-800 border-b border-gray-700">
+        <button
+          type="button"
+          aria-label="Toggle sessions"
+          onClick={() => setShowSessions(!showSessions)}
+          class="px-3 py-1 rounded text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+        >
+          Sessions
+        </button>
       </div>
-      {error.value && (
-        <div data-testid="error-message" class="px-4 py-2 bg-red-900 text-red-200 text-sm">
-          {error.value}
+      <div class="flex flex-1 overflow-hidden">
+        {showSessions && (
+          <div data-testid="sessions-panel" class="w-64 border-r border-gray-700 overflow-y-auto bg-gray-850">
+            <SessionList onSelect={handleSelectSession} selectedId={sessionId.value || undefined} />
+          </div>
+        )}
+        <div class="flex flex-col flex-1">
+          <div class="flex-1 overflow-y-auto">
+            <MessageList messages={messages.value} loading={loading.value} />
+          </div>
+          {error.value && (
+            <div data-testid="error-message" class="px-4 py-2 bg-red-900 text-red-200 text-sm">
+              {error.value}
+            </div>
+          )}
+          <ChatInput
+            onSend={handleSend}
+            onContinue={handleContinue}
+            onCancel={handleCancel}
+            loading={loading.value}
+          />
         </div>
-      )}
-      <ChatInput
-        onSend={handleSend}
-        onContinue={handleContinue}
-        onCancel={handleCancel}
-        loading={loading.value}
-      />
+      </div>
     </div>
   )
 }
