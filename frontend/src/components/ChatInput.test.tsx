@@ -5,12 +5,13 @@ import { ChatInput } from './ChatInput'
 describe('ChatInput', () => {
   const defaultProps = {
     onSend: vi.fn(),
+    onContinue: vi.fn(),
     onCancel: vi.fn(),
     loading: false,
   }
 
   function setup(overrides = {}) {
-    const props = { ...defaultProps, onSend: vi.fn(), onCancel: vi.fn(), ...overrides }
+    const props = { ...defaultProps, onSend: vi.fn(), onContinue: vi.fn(), onCancel: vi.fn(), ...overrides }
     const result = render(<ChatInput {...props} />)
     return { ...result, props }
   }
@@ -39,7 +40,7 @@ describe('ChatInput', () => {
     const { queryByRole, rerender } = setup({ loading: false })
     expect(queryByRole('button', { name: /cancel/i })).toBeNull()
 
-    rerender(<ChatInput onSend={vi.fn()} onCancel={vi.fn()} loading={true} />)
+    rerender(<ChatInput onSend={vi.fn()} onContinue={vi.fn()} onCancel={vi.fn()} loading={true} />)
     expect(queryByRole('button', { name: /cancel/i })).toBeTruthy()
   })
 
@@ -89,5 +90,51 @@ describe('ChatInput', () => {
     const textarea = getByPlaceholderText('Enter your prompt...')
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
     expect(props.onSend).not.toHaveBeenCalled()
+  })
+
+  describe('continue button', () => {
+    it('renders continue button with correct aria-label', () => {
+      const { getByRole } = setup()
+      expect(getByRole('button', { name: /continue session/i })).toBeTruthy()
+    })
+
+    it('continue button is disabled when input is empty', () => {
+      const { getByRole } = setup()
+      const button = getByRole('button', { name: /continue session/i })
+      expect(button).toHaveProperty('disabled', true)
+    })
+
+    it('continue button is disabled when loading is true', () => {
+      const { getByRole, getByPlaceholderText } = setup({ loading: true })
+      const textarea = getByPlaceholderText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'some text' } })
+      const button = getByRole('button', { name: /continue session/i })
+      expect(button).toHaveProperty('disabled', true)
+    })
+
+    it('onContinue callback fires with trimmed text when continue clicked', () => {
+      const { getByPlaceholderText, getByRole, props } = setup()
+      const textarea = getByPlaceholderText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: '  resume work  ' } })
+      const button = getByRole('button', { name: /continue session/i })
+      fireEvent.click(button)
+      expect(props.onContinue).toHaveBeenCalledWith('resume work')
+    })
+
+    it('input clears after continue is clicked', () => {
+      const { getByPlaceholderText, getByRole } = setup()
+      const textarea = getByPlaceholderText('Enter your prompt...') as HTMLTextAreaElement
+      fireEvent.input(textarea, { target: { value: 'continue' } })
+      const button = getByRole('button', { name: /continue session/i })
+      fireEvent.click(button)
+      expect(textarea.value).toBe('')
+    })
+
+    it('continue does not fire when input is empty', () => {
+      const { getByRole, props } = setup()
+      const button = getByRole('button', { name: /continue session/i })
+      fireEvent.click(button)
+      expect(props.onContinue).not.toHaveBeenCalled()
+    })
   })
 })
