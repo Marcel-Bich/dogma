@@ -1,52 +1,137 @@
 #!/bin/bash
-# Version sync pre-commit hook
+# Pre-commit hook: Version sync + Screenshot enforcement
 # Install: cp scripts/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
-VERSION_FILES=(
-  "package.json"
-  "frontend/package.json"
-  "installer/package.json"
-  "wails.json"
-)
+set -e
 
-# Check if any version file is staged
-staged_files=$(git diff --cached --name-only)
-has_version_file=false
+###############################################################################
+# Check 1: Screenshot enforcement for frontend changes
+###############################################################################
 
-for file in "${VERSION_FILES[@]}"; do
-  if echo "$staged_files" | grep -qx "$file"; then
-    has_version_file=true
-    break
+check_screenshots() {
+  # Check for staged .tsx files in frontend/src/
+  STAGED_TSX=$(git diff --cached --name-only -- 'frontend/src/**/*.tsx' 'frontend/src/*.tsx' 2>/dev/null | head -5)
+
+  if [ -z "$STAGED_TSX" ]; then
+    # No frontend tsx files staged, skip screenshot check
+    return 0
   fi
-done
 
-if [ "$has_version_file" = false ]; then
-  exit 0
-fi
+  # Frontend TSX files are staged - check for new screenshot
+  LAST_COMMIT_TIME=$(git log -1 --format=%ct 2>/dev/null || echo "0")
+  SCREENSHOTS_DIR="screenshots"
 
-# Extract versions from all 4 files
-v_root=$(jq -r '.version' package.json)
-v_frontend=$(jq -r '.version' frontend/package.json)
-v_installer=$(jq -r '.version' installer/package.json)
-v_wails=$(jq -r '.info.productVersion' wails.json)
+  if [ ! -d "$SCREENSHOTS_DIR" ]; then
+    echo "ERROR: Frontend .tsx files staged but no screenshots/ directory exists!"
+    echo ""
+    echo "Staged frontend files:"
+    echo "$STAGED_TSX"
+    echo ""
+    echo "Fix: Take a screenshot first:"
+    echo "  cd frontend && npm run screenshot [descriptive-name]"
+    echo "  Then verify the screenshot shows the change."
+    return 1
+  fi
 
-# Compare all versions
-mismatch=false
-if [ "$v_root" != "$v_frontend" ] || [ "$v_root" != "$v_installer" ] || [ "$v_root" != "$v_wails" ]; then
-  mismatch=true
-fi
+  # Find screenshots newer than last commit using stat-based check
+  NEW_SCREENSHOTS=""
+  while IFS= read -r f; do
+    if [ -n "$f" ]; then
+      FILE_TIME=$(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f" 2>/dev/null)
+      if [ "$FILE_TIME" -gt "$LAST_COMMIT_TIME" ]; then
+        NEW_SCREENSHOTS="$f"
+        break
+      fi
+    fi
+  done < <(find "$SCREENSHOTS_DIR" -name "*.png" -type f 2>/dev/null)
 
-if [ "$mismatch" = true ]; then
-  echo "ERROR: Version mismatch detected!"
-  echo ""
-  echo "  package.json:          $v_root"
-  echo "  frontend/package.json: $v_frontend"
-  echo "  installer/package.json: $v_installer"
-  echo "  wails.json:            $v_wails"
-  echo ""
-  echo "All version files must have the same version."
-  echo "Update all files before committing."
-  exit 1
-fi
+  if [ -z "$NEW_SCREENSHOTS" ]; then
+    echo "ERROR: Frontend .tsx files staged but NO new screenshot found!"
+    echo ""
+    echo "Staged frontend files:"
+    echo "$STAGED_TSX"
+    echo ""
+    echo "Last commit: $(date -d @$LAST_COMMIT_TIME 2>/dev/null || date -r $LAST_COMMIT_TIME 2>/dev/null)"
+    echo ""
+    echo "Fix: Take a screenshot BEFORE committing:"
+    echo "  1. Start dev server: cd frontend && npm run dev"
+    echo "  2. Take screenshot: cd frontend && npm run screenshot [name]"
+    echo "  3. Verify the screenshot shows the change"
+    echo "  4. Stage the screenshot: git add screenshots/[file].png"
+    echo "  5. Then commit again"
+    return 1
+  fi
+
+  # Check if screenshot is also staged (just warn, don't block)
+  STAGED_SCREENSHOTS=$(git diff --cached --name-only -- 'screenshots/*.png' 2>/dev/null)
+  if [ -z "$STAGED_SCREENSHOTS" ]; then
+    echo "WARNING: New screenshot exists but is NOT staged!"
+    echo "Screenshot found: $NEW_SCREENSHOTS"
+    echo ""
+    echo "Consider staging the screenshot too:"
+    echo "  git add screenshots/*.png"
+    echo ""
+    # Don't block, just warn
+  fi
+
+  return 0
+}
+
+###############################################################################
+# Check 2: Version sync
+###############################################################################
+
+check_version_sync() {
+  VERSION_FILES=(
+    "package.json"
+    "frontend/package.json"
+    "installer/package.json"
+    "wails.json"
+  )
+
+  # Check if any version file is staged
+  staged_files=$(git diff --cached --name-only)
+  has_version_file=false
+
+  for file in "${VERSION_FILES[@]}"; do
+    if echo "$staged_files" | grep -qx "$file"; then
+      has_version_file=true
+      break
+    fi
+  done
+
+  if [ "$has_version_file" = false ]; then
+    return 0
+  fi
+
+  # Extract versions from all 4 files
+  v_root=$(jq -r '.version' package.json)
+  v_frontend=$(jq -r '.version' frontend/package.json)
+  v_installer=$(jq -r '.version' installer/package.json)
+  v_wails=$(jq -r '.info.productVersion' wails.json)
+
+  # Compare all versions
+  if [ "$v_root" != "$v_frontend" ] || [ "$v_root" != "$v_installer" ] || [ "$v_root" != "$v_wails" ]; then
+    echo "ERROR: Version mismatch detected!"
+    echo ""
+    echo "  package.json:          $v_root"
+    echo "  frontend/package.json: $v_frontend"
+    echo "  installer/package.json: $v_installer"
+    echo "  wails.json:            $v_wails"
+    echo ""
+    echo "All version files must have the same version."
+    echo "Update all files before committing."
+    return 1
+  fi
+
+  return 0
+}
+
+###############################################################################
+# Run all checks
+###############################################################################
+
+check_screenshots
+check_version_sync
 
 exit 0
