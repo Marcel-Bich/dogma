@@ -10,9 +10,13 @@ describe('SettingsPanel', () => {
     activePresetId: 'arctic-pro',
     customAccent: null as string | null,
     intensity: 50,
+    spellCheck: false,
+    backgroundColor: '#000000',
     onSelectPreset: vi.fn(),
     onCustomAccentChange: vi.fn(),
     onIntensityChange: vi.fn(),
+    onSpellCheckChange: vi.fn(),
+    onBackgroundColorChange: vi.fn(),
   }
 
   function setup(overrides = {}) {
@@ -22,6 +26,8 @@ describe('SettingsPanel', () => {
       onSelectPreset: vi.fn(),
       onCustomAccentChange: vi.fn(),
       onIntensityChange: vi.fn(),
+      onSpellCheckChange: vi.fn(),
+      onBackgroundColorChange: vi.fn(),
       ...overrides,
     }
     const result = render(<SettingsPanel {...props} />)
@@ -233,6 +239,86 @@ describe('SettingsPanel', () => {
       const { getByTestId } = setup({ open: true })
       const panel = getByTestId('settings-panel')
       expect(panel.style.zIndex).toBe('40')
+    })
+  })
+
+  describe('spell check section', () => {
+    it('renders "INPUT" section header', () => {
+      const { container } = setup({ open: true })
+      const headers = container.querySelectorAll('div')
+      const inputHeader = Array.from(headers).find(
+        (el) => el.textContent === 'Input' && el.style.textTransform === 'uppercase'
+      )
+      expect(inputHeader).toBeTruthy()
+    })
+
+    it('renders spell check toggle with aria-label', () => {
+      const { getByLabelText } = setup({ open: true })
+      const toggle = getByLabelText('Spell check') as HTMLInputElement
+      expect(toggle.type).toBe('checkbox')
+    })
+
+    it('spell check toggle reflects spellCheck prop when false', () => {
+      const { getByLabelText } = setup({ open: true, spellCheck: false })
+      const toggle = getByLabelText('Spell check') as HTMLInputElement
+      expect(toggle.checked).toBe(false)
+    })
+
+    it('spell check toggle reflects spellCheck prop when true', () => {
+      const { getByLabelText } = setup({ open: true, spellCheck: true })
+      const toggle = getByLabelText('Spell check') as HTMLInputElement
+      expect(toggle.checked).toBe(true)
+    })
+
+    it('changing spell check toggle calls onSpellCheckChange', () => {
+      const { getByLabelText, props } = setup({ open: true, spellCheck: false })
+      const toggle = getByLabelText('Spell check') as HTMLInputElement
+      fireEvent.click(toggle)
+      expect(props.onSpellCheckChange).toHaveBeenCalledWith(true)
+    })
+
+    it('spell check toggle has minimum 44px touch target', () => {
+      const { getByLabelText } = setup({ open: true })
+      const toggle = getByLabelText('Spell check') as HTMLInputElement
+      const wrapper = toggle.closest('label')!
+      expect(wrapper.style.minHeight).toBe('44px')
+    })
+  })
+
+  describe('background color section', () => {
+    it('renders "BACKGROUND" section header', () => {
+      const { container } = setup({ open: true })
+      const headers = container.querySelectorAll('div')
+      const bgHeader = Array.from(headers).find(
+        (el) => el.textContent === 'Background' && el.style.textTransform === 'uppercase'
+      )
+      expect(bgHeader).toBeTruthy()
+    })
+
+    it('renders background color picker with aria-label', () => {
+      const { getByLabelText } = setup({ open: true })
+      const input = getByLabelText('Background color') as HTMLInputElement
+      expect(input.type).toBe('color')
+    })
+
+    it('background color picker shows backgroundColor prop value', () => {
+      const { getByLabelText } = setup({ open: true, backgroundColor: '#112233' })
+      const input = getByLabelText('Background color') as HTMLInputElement
+      expect(input.value).toBe('#112233')
+    })
+
+    it('changing background color calls onBackgroundColorChange', () => {
+      const { getByLabelText, props } = setup({ open: true })
+      const input = getByLabelText('Background color') as HTMLInputElement
+      fireEvent.input(input, { target: { value: '#ff0000' } })
+      expect(props.onBackgroundColorChange).toHaveBeenCalledWith('#ff0000')
+    })
+
+    it('background color picker has minimum 44px dimensions', () => {
+      const { getByLabelText } = setup({ open: true })
+      const input = getByLabelText('Background color') as HTMLInputElement
+      expect(input.style.width).toBe('44px')
+      expect(input.style.height).toBe('44px')
     })
   })
 })

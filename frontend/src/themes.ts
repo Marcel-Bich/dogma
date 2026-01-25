@@ -120,14 +120,14 @@ export const PRESETS: ThemePreset[] = [
 const STORAGE_KEY = 'dogma-theme'
 const DEFAULT_PRESET_ID = 'arctic-pro'
 
-export function saveTheme(presetId: string, customAccent: string | null, intensity: number): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ presetId, customAccent, intensity }))
+export function saveTheme(presetId: string, customAccent: string | null, intensity: number, spellCheck: boolean, backgroundColor: string): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ presetId, customAccent, intensity, spellCheck, backgroundColor }))
 }
 
-export function loadTheme(): { presetId: string; customAccent: string | null; intensity: number } {
+export function loadTheme(): { presetId: string; customAccent: string | null; intensity: number; spellCheck: boolean; backgroundColor: string } {
   const stored = localStorage.getItem(STORAGE_KEY)
   if (!stored) {
-    return { presetId: DEFAULT_PRESET_ID, customAccent: null, intensity: 50 }
+    return { presetId: DEFAULT_PRESET_ID, customAccent: null, intensity: 50, spellCheck: false, backgroundColor: '#000000' }
   }
   try {
     const parsed = JSON.parse(stored)
@@ -135,9 +135,11 @@ export function loadTheme(): { presetId: string; customAccent: string | null; in
       presetId: parsed.presetId,
       customAccent: parsed.customAccent,
       intensity: parsed.intensity ?? 50,
+      spellCheck: parsed.spellCheck ?? false,
+      backgroundColor: parsed.backgroundColor ?? '#000000',
     }
   } catch {
-    return { presetId: DEFAULT_PRESET_ID, customAccent: null, intensity: 50 }
+    return { presetId: DEFAULT_PRESET_ID, customAccent: null, intensity: 50, spellCheck: false, backgroundColor: '#000000' }
   }
 }
 

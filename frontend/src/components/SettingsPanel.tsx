@@ -6,9 +6,13 @@ interface SettingsPanelProps {
   activePresetId: string
   customAccent: string | null
   intensity: number
+  spellCheck: boolean
+  backgroundColor: string
   onSelectPreset: (id: string) => void
   onCustomAccentChange: (hex: string) => void
   onIntensityChange: (val: number) => void
+  onSpellCheckChange: (value: boolean) => void
+  onBackgroundColorChange: (hex: string) => void
 }
 
 export function SettingsPanel({
@@ -17,9 +21,13 @@ export function SettingsPanel({
   activePresetId,
   customAccent,
   intensity,
+  spellCheck,
+  backgroundColor,
   onSelectPreset,
   onCustomAccentChange,
   onIntensityChange,
+  onSpellCheckChange,
+  onBackgroundColorChange,
 }: SettingsPanelProps) {
   const currentAccent =
     customAccent || PRESETS.find((p) => p.id === activePresetId)?.colors.accent || '#22d3ee'
@@ -135,7 +143,7 @@ export function SettingsPanel({
         </div>
       </div>
 
-      <div>
+      <div class="mb-6">
         <div
           style={{
             fontSize: '10px',
@@ -162,6 +170,69 @@ export function SettingsPanel({
             style={{
               width: '100%',
               accentColor: currentAccent,
+            }}
+          />
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <div
+          style={{
+            fontSize: '10px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.15em',
+            color: 'var(--arctic-dim)',
+            marginBottom: '12px',
+          }}
+        >
+          Input
+        </div>
+        <label
+          class="flex items-center gap-3 cursor-pointer"
+          style={{ minHeight: '44px' }}
+        >
+          <input
+            type="checkbox"
+            aria-label="Spell check"
+            checked={spellCheck}
+            onChange={(e) => onSpellCheckChange((e.target as HTMLInputElement).checked)}
+            style={{
+              width: '20px',
+              height: '20px',
+              accentColor: currentAccent,
+            }}
+          />
+          <span style={{ fontSize: '12px', color: 'var(--arctic-dim)' }}>Spell check</span>
+        </label>
+      </div>
+
+      <div>
+        <div
+          style={{
+            fontSize: '10px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.15em',
+            color: 'var(--arctic-dim)',
+            marginBottom: '12px',
+          }}
+        >
+          Background
+        </div>
+        <div class="flex items-center gap-3">
+          <span style={{ fontSize: '12px', color: 'var(--arctic-dim)' }}>Color</span>
+          <input
+            type="color"
+            aria-label="Background color"
+            value={backgroundColor}
+            onInput={(e) => onBackgroundColorChange((e.target as HTMLInputElement).value)}
+            style={{
+              width: '44px',
+              height: '44px',
+              border: '1px solid var(--arctic-border)',
+              borderRadius: '2px',
+              cursor: 'pointer',
+              background: 'none',
+              padding: '2px',
             }}
           />
         </div>

@@ -6,11 +6,12 @@ interface ChatInputProps {
   onCancel: () => void
   loading: boolean
   stoppable?: boolean
+  spellCheck?: boolean
 }
 
 type InputState = 'idle' | 'ready' | 'pending' | 'loading'
 
-export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = false }: ChatInputProps) {
+export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = false, spellCheck = false }: ChatInputProps) {
   const [text, setText] = useState('')
   const [state, setState] = useState<InputState>('idle')
   const [enterCount, setEnterCount] = useState(0)
@@ -241,6 +242,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
           rows={1}
           readOnly={isPending}
           disabled={loading}
+          spellCheck={spellCheck}
         />
         {showIndicator && (
           <button

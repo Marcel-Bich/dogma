@@ -27,7 +27,7 @@ vi.mock('./backend', () => ({
 
 // Mock themes module
 vi.mock('./themes', () => ({
-  loadTheme: vi.fn(() => ({ presetId: 'arctic-pro', customAccent: null, intensity: 50 })),
+  loadTheme: vi.fn(() => ({ presetId: 'arctic-pro', customAccent: null, intensity: 50, spellCheck: false, backgroundColor: '#000000' })),
   getThemeColors: vi.fn(() => ({
     accent: '#22d3ee',
     accentDark: '#0e7490',
@@ -373,7 +373,7 @@ describe('App', () => {
       expect(themes.getThemeColors).toHaveBeenCalledWith('pulse', null)
       expect(themes.applyTheme).toHaveBeenCalled()
       expect(themes.applyIntensity).toHaveBeenCalled()
-      expect(themes.saveTheme).toHaveBeenCalledWith('pulse', null, 50)
+      expect(themes.saveTheme).toHaveBeenCalledWith('pulse', null, 50, false, '#000000')
     })
 
     it('custom accent updates theme and saves', () => {
@@ -388,7 +388,7 @@ describe('App', () => {
       expect(themes.getThemeColors).toHaveBeenCalledWith('arctic-pro', '#ff5500')
       expect(themes.applyTheme).toHaveBeenCalled()
       expect(themes.applyIntensity).toHaveBeenCalled()
-      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', '#ff5500', 50)
+      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', '#ff5500', 50, false, '#000000')
     })
 
     it('intensity slider updates theme and saves', () => {
@@ -401,7 +401,7 @@ describe('App', () => {
       fireEvent.input(slider, { target: { value: '75' } })
       expect(state.intensity.value).toBe(75)
       expect(themes.applyIntensity).toHaveBeenCalled()
-      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', null, 75)
+      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', null, 75, false, '#000000')
     })
 
     it('intensity slider uses custom accent when available', () => {
@@ -417,7 +417,52 @@ describe('App', () => {
       const slider = getByLabelText('Intensity')
       fireEvent.input(slider, { target: { value: '60' } })
       expect(themes.applyIntensity).toHaveBeenCalledWith(60, '#ff0000')
-      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', '#ff0000', 60)
+      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', '#ff0000', 60, false, '#000000')
+    })
+
+    it('loads spellCheck and backgroundColor from stored values', () => {
+      vi.mocked(themes.loadTheme).mockReturnValueOnce({ presetId: 'arctic-pro', customAccent: null, intensity: 50, spellCheck: true, backgroundColor: '#112233' })
+      render(<App />)
+      expect(state.spellCheck.value).toBe(true)
+      expect(state.backgroundColor.value).toBe('#112233')
+    })
+
+    it('spell check toggle updates state and saves', () => {
+      const { getByRole, getByText, getByLabelText } = render(<App />)
+      // Open settings
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Settings'))
+      // Toggle spell check
+      const toggle = getByLabelText('Spell check')
+      fireEvent.click(toggle)
+      expect(state.spellCheck.value).toBe(true)
+      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', null, 50, true, '#000000')
+    })
+
+    it('background color picker updates state and saves', () => {
+      const { getByRole, getByText, getByLabelText } = render(<App />)
+      // Open settings
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Settings'))
+      // Change background color
+      const colorInput = getByLabelText('Background color')
+      fireEvent.input(colorInput, { target: { value: '#ff0000' } })
+      expect(state.backgroundColor.value).toBe('#ff0000')
+      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', null, 50, false, '#ff0000')
+    })
+
+    it('applies backgroundColor to root container', () => {
+      vi.mocked(themes.loadTheme).mockReturnValueOnce({ presetId: 'arctic-pro', customAccent: null, intensity: 50, spellCheck: false, backgroundColor: '#112233' })
+      const { container } = render(<App />)
+      const root = container.firstElementChild as HTMLElement
+      expect(root.style.backgroundColor).toBe('rgb(17, 34, 51)')
+    })
+
+    it('passes spellCheck to ChatInput', () => {
+      vi.mocked(themes.loadTheme).mockReturnValueOnce({ presetId: 'arctic-pro', customAccent: null, intensity: 50, spellCheck: true, backgroundColor: '#000000' })
+      const { getByLabelText } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      expect(textarea.getAttribute('spellcheck')).toBe('true')
     })
   })
 

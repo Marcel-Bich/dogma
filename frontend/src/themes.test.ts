@@ -297,22 +297,22 @@ describe('themes', () => {
     describe('loadTheme', () => {
       it('returns default when localStorage is empty', () => {
         const result = loadTheme()
-        expect(result).toEqual({ presetId: 'arctic-pro', customAccent: null, intensity: 50 })
+        expect(result).toEqual({ presetId: 'arctic-pro', customAccent: null, intensity: 50, spellCheck: false, backgroundColor: '#000000' })
       })
 
       it('parses valid stored JSON', () => {
         localStorage.setItem(
           'dogma-theme',
-          JSON.stringify({ presetId: 'pulse', customAccent: '#ff0000', intensity: 70 })
+          JSON.stringify({ presetId: 'pulse', customAccent: '#ff0000', intensity: 70, spellCheck: true, backgroundColor: '#112233' })
         )
         const result = loadTheme()
-        expect(result).toEqual({ presetId: 'pulse', customAccent: '#ff0000', intensity: 70 })
+        expect(result).toEqual({ presetId: 'pulse', customAccent: '#ff0000', intensity: 70, spellCheck: true, backgroundColor: '#112233' })
       })
 
       it('returns default on malformed JSON', () => {
         localStorage.setItem('dogma-theme', 'not valid json{{{')
         const result = loadTheme()
-        expect(result).toEqual({ presetId: 'arctic-pro', customAccent: null, intensity: 50 })
+        expect(result).toEqual({ presetId: 'arctic-pro', customAccent: null, intensity: 50, spellCheck: false, backgroundColor: '#000000' })
       })
 
       it('returns default intensity when stored data lacks intensity field', () => {
@@ -323,34 +323,68 @@ describe('themes', () => {
         const result = loadTheme()
         expect(result.intensity).toBe(50)
       })
+
+      it('returns default spellCheck when stored data lacks spellCheck field', () => {
+        localStorage.setItem(
+          'dogma-theme',
+          JSON.stringify({ presetId: 'pulse', customAccent: null, intensity: 50 })
+        )
+        const result = loadTheme()
+        expect(result.spellCheck).toBe(false)
+      })
+
+      it('returns default backgroundColor when stored data lacks backgroundColor field', () => {
+        localStorage.setItem(
+          'dogma-theme',
+          JSON.stringify({ presetId: 'pulse', customAccent: null, intensity: 50 })
+        )
+        const result = loadTheme()
+        expect(result.backgroundColor).toBe('#000000')
+      })
     })
 
     describe('saveTheme', () => {
-      it('stores correct JSON with key dogma-theme including intensity', () => {
-        saveTheme('ember', '#abcdef', 65)
+      it('stores correct JSON with key dogma-theme including all fields', () => {
+        saveTheme('ember', '#abcdef', 65, true, '#112233')
         const stored = localStorage.getItem('dogma-theme')
         expect(stored).not.toBeNull()
         expect(JSON.parse(stored!)).toEqual({
           presetId: 'ember',
           customAccent: '#abcdef',
           intensity: 65,
+          spellCheck: true,
+          backgroundColor: '#112233',
         })
       })
 
       it('stores null customAccent correctly', () => {
-        saveTheme('arctic-pro', null, 50)
+        saveTheme('arctic-pro', null, 50, false, '#000000')
         const stored = localStorage.getItem('dogma-theme')
         expect(JSON.parse(stored!)).toEqual({
           presetId: 'arctic-pro',
           customAccent: null,
           intensity: 50,
+          spellCheck: false,
+          backgroundColor: '#000000',
         })
       })
 
       it('stores intensity value', () => {
-        saveTheme('pulse', null, 80)
+        saveTheme('pulse', null, 80, false, '#000000')
         const stored = localStorage.getItem('dogma-theme')
         expect(JSON.parse(stored!).intensity).toBe(80)
+      })
+
+      it('stores spellCheck value', () => {
+        saveTheme('pulse', null, 50, true, '#000000')
+        const stored = localStorage.getItem('dogma-theme')
+        expect(JSON.parse(stored!).spellCheck).toBe(true)
+      })
+
+      it('stores backgroundColor value', () => {
+        saveTheme('pulse', null, 50, false, '#ff0000')
+        const stored = localStorage.getItem('dogma-theme')
+        expect(JSON.parse(stored!).backgroundColor).toBe('#ff0000')
       })
     })
   })

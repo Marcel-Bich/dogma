@@ -13,6 +13,8 @@ import {
   activeThemeId,
   customAccent,
   intensity,
+  spellCheck,
+  backgroundColor,
   addMessage,
   handleBridgeEvent,
   setLoading,
@@ -23,6 +25,8 @@ import {
   setActiveTheme,
   setCustomAccent,
   setIntensity,
+  setSpellCheck,
+  setBackgroundColor,
   resetState,
   loadSessions,
 } from './state'
@@ -448,6 +452,8 @@ describe('state', () => {
       setActiveTheme('pulse')
       setCustomAccent('#00ff00')
       setIntensity(80)
+      setSpellCheck(true)
+      setBackgroundColor('#ff0000')
 
       resetState()
 
@@ -456,6 +462,41 @@ describe('state', () => {
       expect(activeThemeId.value).toBe('arctic-pro')
       expect(customAccent.value).toBeNull()
       expect(intensity.value).toBe(50)
+      expect(spellCheck.value).toBe(false)
+      expect(backgroundColor.value).toBe('#000000')
+    })
+  })
+
+  describe('spellCheck', () => {
+    it('starts as false', () => {
+      expect(spellCheck.value).toBe(false)
+    })
+
+    it('setSpellCheck(true) updates spellCheck.value to true', () => {
+      setSpellCheck(true)
+      expect(spellCheck.value).toBe(true)
+    })
+
+    it('setSpellCheck(false) updates spellCheck.value to false', () => {
+      setSpellCheck(true)
+      setSpellCheck(false)
+      expect(spellCheck.value).toBe(false)
+    })
+  })
+
+  describe('backgroundColor', () => {
+    it('starts as #000000', () => {
+      expect(backgroundColor.value).toBe('#000000')
+    })
+
+    it('setBackgroundColor updates backgroundColor.value', () => {
+      setBackgroundColor('#112233')
+      expect(backgroundColor.value).toBe('#112233')
+    })
+
+    it('setBackgroundColor can be set to any hex color', () => {
+      setBackgroundColor('#ffffff')
+      expect(backgroundColor.value).toBe('#ffffff')
     })
   })
 

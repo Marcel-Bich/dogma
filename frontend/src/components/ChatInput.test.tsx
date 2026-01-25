@@ -9,6 +9,7 @@ describe('ChatInput', () => {
     onCancel: vi.fn(),
     loading: false,
     stoppable: false,
+    spellCheck: false,
   }
 
   function setup(overrides = {}) {
@@ -508,6 +509,27 @@ describe('ChatInput', () => {
       expect(queryByTestId('indicator')).toBeTruthy()
       fireEvent.input(textarea, { target: { value: '' } })
       expect(queryByTestId('indicator')).toBeNull()
+    })
+  })
+
+  describe('spellCheck prop', () => {
+    it('textarea does not have spellcheck=true by default', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      // When spellCheck is false, Preact does not set the attribute (null) or sets it to 'false'
+      expect(textarea.getAttribute('spellcheck')).not.toBe('true')
+    })
+
+    it('textarea does not have spellcheck=true when prop is false', () => {
+      const { getByLabelText } = setup({ spellCheck: false })
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      expect(textarea.getAttribute('spellcheck')).not.toBe('true')
+    })
+
+    it('textarea has spellcheck attribute set to true when prop is true', () => {
+      const { getByLabelText } = setup({ spellCheck: true })
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      expect(textarea.getAttribute('spellcheck')).toBe('true')
     })
   })
 })
