@@ -75,7 +75,15 @@ describe('ChatInput', () => {
     it('textarea has padding-right for indicator space', () => {
       const { getByLabelText } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
-      expect(textarea.style.paddingRight).toBe('2.5rem')
+      expect(textarea.style.paddingRight).toBe('3rem')
+    })
+
+    it('indicator button is 32px wide', () => {
+      const { getByLabelText, getByTestId } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      const indicator = getByTestId('indicator')
+      expect(indicator.className).toContain('w-8')
     })
   })
 
@@ -204,6 +212,18 @@ describe('ChatInput', () => {
       expect(getByTestId('indicator').className).toContain('opacity-40')
     })
 
+    it('Escape cancels pending and returns to edit mode', () => {
+      const { getByLabelText, getByTestId, queryByTestId } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      expect(queryByTestId('shimmer')).toBeTruthy()
+      fireEvent.keyDown(textarea, { key: 'Escape' })
+      expect(queryByTestId('shimmer')).toBeNull()
+      expect(textarea.readOnly).toBe(false)
+      expect(getByTestId('indicator').className).toContain('opacity-40')
+    })
+
     it('clicking shimmer cancels pending and returns to edit mode', () => {
       const { getByLabelText, getByTestId, queryByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
@@ -290,26 +310,30 @@ describe('ChatInput', () => {
   })
 
   describe('loading states', () => {
-    it('indicator shows \u25b8 dim during loading', () => {
+    it('indicator shows loading animation during loading (not stoppable)', () => {
       const { getByTestId } = setup({ loading: true })
       const indicator = getByTestId('indicator')
-      expect(indicator.textContent).toBe('\u25b8')
+      expect(indicator.querySelector('.loading-dots')).toBeTruthy()
       expect(indicator.className).toContain('opacity-40')
     })
 
-    it('indicator shows # when loading AND stoppable', () => {
+    it('indicator shows CSS square when loading AND stoppable', () => {
       const { getByTestId } = setup({ loading: true, stoppable: true })
       const indicator = getByTestId('indicator')
-      expect(indicator.textContent).toBe('#')
+      const stopSquare = indicator.querySelector('.stop-square')
+      expect(stopSquare).toBeTruthy()
+      expect(stopSquare?.className).toContain('w-3')
+      expect(stopSquare?.className).toContain('h-3')
+      expect(stopSquare?.className).toContain('bg-current')
     })
 
-    it('# indicator is not dim when stoppable', () => {
+    it('stop square indicator is not dim when stoppable', () => {
       const { getByTestId } = setup({ loading: true, stoppable: true })
       const indicator = getByTestId('indicator')
       expect(indicator.className).not.toContain('opacity-40')
     })
 
-    it('clicking # calls onCancel', () => {
+    it('clicking stop square calls onCancel', () => {
       const { getByTestId, props } = setup({ loading: true, stoppable: true })
       fireEvent.click(getByTestId('indicator'))
       expect(props.onCancel).toHaveBeenCalledTimes(1)
