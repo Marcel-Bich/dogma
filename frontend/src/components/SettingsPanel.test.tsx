@@ -321,4 +321,25 @@ describe('SettingsPanel', () => {
       expect(input.style.height).toBe('44px')
     })
   })
+
+  describe('panel background', () => {
+    it('panel uses var(--bg-color) for background', () => {
+      const { getByTestId } = setup({ open: true })
+      const panel = getByTestId('settings-panel')
+      expect(panel.style.background).toBe('var(--bg-color)')
+    })
+
+    it('panel has no border-left when closed', () => {
+      const { getByTestId } = setup({ open: false })
+      const panel = getByTestId('settings-panel')
+      // jsdom interprets borderLeft: 'none' as setting borderLeftStyle to 'none'
+      expect(panel.style.borderLeftStyle).toBe('none')
+    })
+
+    it('panel has border-left when open', () => {
+      const { getByTestId } = setup({ open: true })
+      const panel = getByTestId('settings-panel')
+      expect(panel.style.borderLeft).toContain('var(--arctic-border)')
+    })
+  })
 })

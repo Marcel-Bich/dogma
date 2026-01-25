@@ -28,7 +28,7 @@ import {
   setSpellCheck,
   setBackgroundColor,
 } from './state'
-import { loadTheme, getThemeColors, applyTheme, applyIntensity, saveTheme } from './themes'
+import { loadTheme, getThemeColors, applyTheme, applyIntensity, applyBackgroundColor, saveTheme } from './themes'
 import type { BridgeEvent } from './types'
 
 export function App() {
@@ -46,6 +46,7 @@ export function App() {
     applyTheme(colors)
     const accent = stored.customAccent || colors.accent
     applyIntensity(stored.intensity, accent)
+    applyBackgroundColor(stored.backgroundColor)
   }, [])
 
   useEffect(() => {
@@ -121,6 +122,7 @@ export function App() {
 
   function handleBackgroundColor(hex: string) {
     setBackgroundColor(hex)
+    applyBackgroundColor(hex)
     saveTheme(activeThemeId.value, customAccent.value, intensity.value, spellCheck.value, hex)
   }
 
@@ -129,8 +131,8 @@ export function App() {
   }
 
   return (
-    <div class="flex flex-col h-screen relative overflow-hidden scanline" style={{ backgroundColor: backgroundColor.value }}>
-      <div class="relative z-10 flex items-center justify-end px-4 py-1 bg-black border-b shadow-md bg-gradient-to-b from-black to-black" style={{ borderColor: 'var(--arctic-border)' }}>
+    <div class="flex flex-col h-screen relative overflow-hidden scanline" style={{ background: 'var(--bg-color)' }}>
+      <div class="relative z-10 flex items-center justify-end px-4 py-1 border-b shadow-md" style={{ background: 'var(--bg-color)', borderColor: 'var(--arctic-border)' }}>
         <Menu
           showSessions={showSessions}
           onToggleSessions={() => setShowSessions(!showSessions)}
@@ -140,10 +142,12 @@ export function App() {
       <div class="flex flex-1 overflow-hidden">
         <div
           data-testid="sessions-panel"
-          class={`overflow-y-auto bg-black border-r transition-all duration-200 ease-in-out ${showSessions ? 'absolute sm:relative inset-y-0 left-0 sm:inset-auto w-[85vw] sm:w-64 z-20 sm:z-auto opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}
-          style={{ borderColor: 'var(--arctic-border)' }}
+          class={`overflow-y-auto transition-all duration-200 ease-in-out ${showSessions ? 'absolute sm:relative inset-y-0 left-0 sm:inset-auto w-[85vw] sm:w-64 z-20 sm:z-auto opacity-100 border-r' : 'w-0 opacity-0 overflow-hidden border-r-0'}`}
+          style={{ background: 'var(--bg-color)', borderColor: 'var(--arctic-border)' }}
         >
-          <SessionList onSelect={handleSelectSession} selectedId={sessionId.value || undefined} listFn={backend.listSessions} />
+          {showSessions && (
+            <SessionList onSelect={handleSelectSession} selectedId={sessionId.value || undefined} listFn={backend.listSessions} />
+          )}
         </div>
         <div data-testid="main-content" class="flex flex-col flex-1" onClick={() => { if (showSessions) setShowSessions(false) }}>
           <div class="flex-1 overflow-y-auto">

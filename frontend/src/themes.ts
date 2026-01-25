@@ -179,3 +179,7 @@ export function applyIntensity(intensityVal: number, accent: string): void {
   const opacity = ((intensityVal - 30) / 60) * 0.5 + 0.4
   style.setProperty('--arctic-brand-opacity', opacity.toFixed(2).replace(/0$/, ''))
 }
+
+export function applyBackgroundColor(backgroundColor: string): void {
+  document.documentElement.style.setProperty('--bg-color', backgroundColor)
+}

@@ -38,8 +38,8 @@ export function SettingsPanel({
       class="fixed top-0 right-0 bottom-0 overflow-y-auto"
       style={{
         width: '280px',
-        background: '#000',
-        borderLeft: '1px solid var(--arctic-border)',
+        background: 'var(--bg-color)',
+        borderLeft: open ? '1px solid var(--arctic-border)' : 'none',
         transform: open ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 200ms ease-in-out',
         zIndex: 40,
