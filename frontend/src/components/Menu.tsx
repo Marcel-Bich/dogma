@@ -65,7 +65,7 @@ export function Menu({ showSessions, onToggleSessions, onOpenSettings }: MenuPro
           data-testid="menu-dropdown"
           class="absolute right-0 top-full mt-1 z-50"
           style={{
-            background: '#000',
+            background: 'var(--bg-color)',
             border: '1px solid var(--arctic-border)',
             minWidth: '160px',
             maxWidth: 'calc(100vw - 32px)',

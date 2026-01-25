@@ -10,6 +10,7 @@ import {
   getThemeColors,
   applyTheme,
   applyIntensity,
+  applyBackgroundColor,
   type ThemeColors,
 } from './themes'
 
@@ -520,6 +521,27 @@ describe('themes', () => {
       const [accentH] = hexToHsl('#a78bfa')
       expect(h).toBeCloseTo(accentH, 0)
       expect(l).toBeCloseTo(70, 0)
+    })
+  })
+
+  describe('applyBackgroundColor', () => {
+    it('sets --bg-color CSS variable on document.documentElement', () => {
+      applyBackgroundColor('#112233')
+      const style = document.documentElement.style
+      expect(style.getPropertyValue('--bg-color')).toBe('#112233')
+    })
+
+    it('overwrites previously set background color', () => {
+      applyBackgroundColor('#111111')
+      applyBackgroundColor('#222222')
+      const style = document.documentElement.style
+      expect(style.getPropertyValue('--bg-color')).toBe('#222222')
+    })
+
+    it('accepts black as default', () => {
+      applyBackgroundColor('#000000')
+      const style = document.documentElement.style
+      expect(style.getPropertyValue('--bg-color')).toBe('#000000')
     })
   })
 })

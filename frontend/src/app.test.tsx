@@ -42,6 +42,9 @@ vi.mock('./themes', () => ({
   })),
   applyTheme: vi.fn(),
   applyIntensity: vi.fn(),
+  applyBackgroundColor: vi.fn((color: string) => {
+    document.documentElement.style.setProperty('--bg-color', color)
+  }),
   saveTheme: vi.fn(),
   PRESETS: [
     { id: 'arctic-pro', name: 'Arctic Pro', colors: { accent: '#22d3ee', accentDark: '#0e7490', accentLight: '#67e8f9', border: '#1e3a4a', text: '#c8c8d8', dim: '#4a6670', message: '#e0f0ff', thinking: '#3a6670', error: '#f87171', black: '#000000' } },
@@ -93,12 +96,11 @@ describe('App', () => {
       expect(menuBtn).toBeTruthy()
     })
 
-    it('header has shadow and gradient for visual depth', () => {
+    it('header has shadow for visual depth', () => {
       const { getByRole } = render(<App />)
       const menuBtn = getByRole('button', { name: 'Menu' })
       const header = menuBtn.closest('.z-10') as HTMLElement
       expect(header.className).toContain('shadow-md')
-      expect(header.className).toContain('bg-gradient-to-b')
       expect(header.className).toContain('z-10')
     })
   })
@@ -451,11 +453,12 @@ describe('App', () => {
       expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', null, 50, false, '#ff0000')
     })
 
-    it('applies backgroundColor to root container', () => {
+    it('applies backgroundColor via CSS variable to root container', () => {
       vi.mocked(themes.loadTheme).mockReturnValueOnce({ presetId: 'arctic-pro', customAccent: null, intensity: 50, spellCheck: false, backgroundColor: '#112233' })
       const { container } = render(<App />)
       const root = container.firstElementChild as HTMLElement
-      expect(root.style.backgroundColor).toBe('rgb(17, 34, 51)')
+      expect(root.style.background).toBe('var(--bg-color)')
+      expect(document.documentElement.style.getPropertyValue('--bg-color')).toBe('#112233')
     })
 
     it('passes spellCheck to ChatInput', () => {
@@ -463,6 +466,19 @@ describe('App', () => {
       const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
       expect(textarea.getAttribute('spellcheck')).toBe('true')
+    })
+
+    it('sets --bg-color CSS variable on document root', () => {
+      vi.mocked(themes.loadTheme).mockReturnValueOnce({ presetId: 'arctic-pro', customAccent: null, intensity: 50, spellCheck: false, backgroundColor: '#112233' })
+      render(<App />)
+      expect(document.documentElement.style.getPropertyValue('--bg-color')).toBe('#112233')
+    })
+
+    it('topbar uses var(--bg-color) for background', () => {
+      const { getByRole } = render(<App />)
+      const menuBtn = getByRole('button', { name: 'Menu' })
+      const header = menuBtn.closest('.z-10') as HTMLElement
+      expect(header.style.background).toContain('var(--bg-color)')
     })
   })
 
@@ -506,6 +522,43 @@ describe('App', () => {
       expect(panel.className).toContain('ease-in-out')
     })
 
+    it('sessions panel has no border when closed', () => {
+      const { getByTestId } = render(<App />)
+      const panel = getByTestId('sessions-panel')
+      expect(panel.className).toContain('border-r-0')
+    })
+
+    it('sessions panel has border when open', () => {
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Sessions'))
+      const panel = getByTestId('sessions-panel')
+      expect(panel.className).toContain('border-r')
+      expect(panel.className).not.toContain('border-r-0')
+    })
+
+    it('SessionList is not rendered when panel is closed', () => {
+      const { queryByTestId } = render(<App />)
+      // SessionList renders one of these test IDs
+      expect(queryByTestId('sessions-loading')).toBeNull()
+      expect(queryByTestId('sessions-list')).toBeNull()
+      expect(queryByTestId('sessions-empty')).toBeNull()
+      expect(queryByTestId('sessions-error')).toBeNull()
+    })
+
+    it('SessionList is rendered when panel is open', () => {
+      const { getByRole, getByText, queryByTestId } = render(<App />)
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Sessions'))
+      // At least one of these should exist
+      const hasSessionContent =
+        queryByTestId('sessions-loading') !== null ||
+        queryByTestId('sessions-list') !== null ||
+        queryByTestId('sessions-empty') !== null ||
+        queryByTestId('sessions-error') !== null
+      expect(hasSessionContent).toBe(true)
+    })
+
     it('sessions panel uses responsive width classes when open', () => {
       const { getByRole, getByText, getByTestId } = render(<App />)
       fireEvent.click(getByRole('button', { name: 'Menu' }))
@@ -524,7 +577,10 @@ describe('App', () => {
     it('SessionList receives current sessionId as selectedId', () => {
       state.sessionId.value = 'test-session-id'
       state.sessions.value = [{ id: 'test-session-id', summary: 'Test', first_message: '', timestamp: '2026-01-24T10:00:00Z', model: 'opus' }]
-      const { getByTestId } = render(<App />)
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      // Open sessions panel first (SessionList only renders when open)
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Sessions'))
       const sessionItem = getByTestId('session-item-test-session-id')
       expect(sessionItem.className).toContain('border-blue-500')
     })
@@ -532,7 +588,10 @@ describe('App', () => {
     it('clicking a session item calls handleSelectSession', () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
       state.sessions.value = [{ id: 'click-session', summary: 'Click me', first_message: '', timestamp: '2026-01-24T10:00:00Z', model: 'opus' }]
-      const { getByTestId } = render(<App />)
+      const { getByRole, getByText, getByTestId } = render(<App />)
+      // Open sessions panel first (SessionList only renders when open)
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Sessions'))
       fireEvent.click(getByTestId('session-item-click-session'))
       expect(consoleSpy).toHaveBeenCalledWith('Selected session:', 'click-session')
       consoleSpy.mockRestore()
@@ -540,7 +599,10 @@ describe('App', () => {
 
     it('passes backend.listSessions as listFn to SessionList', () => {
       const loadSessionsSpy = vi.spyOn(state, 'loadSessions').mockResolvedValue(undefined)
-      render(<App />)
+      const { getByRole, getByText } = render(<App />)
+      // Open sessions panel first (SessionList only renders when open)
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Sessions'))
       expect(loadSessionsSpy).toHaveBeenCalledWith(mockBackend.listSessions)
       loadSessionsSpy.mockRestore()
     })

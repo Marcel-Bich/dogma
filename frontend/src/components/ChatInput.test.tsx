@@ -532,4 +532,18 @@ describe('ChatInput', () => {
       expect(textarea.getAttribute('spellcheck')).toBe('true')
     })
   })
+
+  describe('background color', () => {
+    it('wrapper uses var(--bg-color) for background', () => {
+      const { container } = setup()
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper.style.background).toBe('var(--bg-color)')
+    })
+
+    it('textarea uses var(--bg-color) for background', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      expect(textarea.style.background).toBe('var(--bg-color)')
+    })
+  })
 })

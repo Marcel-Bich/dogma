@@ -176,4 +176,11 @@ describe('Menu', () => {
     fireEvent.click(button)
     expect(container.querySelector('[data-testid="menu-dropdown"]')).toBeNull()
   })
+
+  it('dropdown uses var(--bg-color) for background', () => {
+    const { getByRole, getByTestId } = setup()
+    fireEvent.click(getByRole('button', { name: 'Menu' }))
+    const dropdown = getByTestId('menu-dropdown')
+    expect(dropdown.style.background).toBe('var(--bg-color)')
+  })
 })

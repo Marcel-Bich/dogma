@@ -202,7 +202,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   const isPending = state === 'pending'
 
   return (
-    <div class="relative flex items-center p-3 bg-black border-t" style={{ borderColor: 'var(--arctic-border)' }}>
+    <div class="relative flex items-center p-3 border-t" style={{ background: 'var(--bg-color)', borderColor: 'var(--arctic-border)' }}>
       {isPending && (
         <button
           type="button"
@@ -218,7 +218,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
           autoFocus
           class="w-full resize-none p-2 border text-sm glass-input focus:outline-none transition-all duration-200 min-h-[44px] max-h-[55vh]"
           style={{
-            background: '#000',
+            background: 'var(--bg-color)',
             color: 'var(--arctic-message)',
             borderColor: 'rgba(var(--arctic-accent-rgb), 0.2)',
             borderRadius: '2px',
