@@ -156,8 +156,8 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
 
   function getIndicatorContent(): string {
     if (loading && stoppable) return '#'
-    if (state === 'pending' && enterCount % 2 === 0) return '>>'
-    return '>'
+    if (state === 'pending' && enterCount % 2 === 0) return '\u25b8\u25b8'
+    return '\u25b8'
   }
 
   function getIndicatorColor(): string {
@@ -186,46 +186,50 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
           aria-label="Cancel pending"
         />
       )}
-      <textarea
-        ref={textareaRef}
-        class="flex-1 resize-none p-2 border text-sm glass-input focus:outline-none transition-all duration-200 min-h-[44px]"
-        style={{
-          background: '#000',
-          color: 'var(--arctic-message)',
-          borderColor: 'rgba(var(--arctic-accent-rgb), 0.2)',
-          borderRadius: '2px',
-        }}
-        onFocus={(e) => {
-          const t = e.target as HTMLTextAreaElement
-          t.style.borderColor = 'rgba(var(--arctic-accent-rgb), 0.5)'
-          t.style.boxShadow = '0 0 8px rgba(var(--arctic-accent-rgb), 0.3)'
-        }}
-        onBlur={(e) => {
-          const t = e.target as HTMLTextAreaElement
-          t.style.borderColor = 'rgba(var(--arctic-accent-rgb), 0.2)'
-          t.style.boxShadow = 'none'
-        }}
-        placeholder="..."
-        aria-label="Enter your prompt..."
-        value={text}
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-        rows={1}
-        readOnly={isPending}
-        disabled={loading}
-      />
-      {showIndicator && (
-        <button
-          type="button"
-          data-testid="indicator"
-          onClick={handleIndicatorClick}
-          class={`ml-2 px-2 min-h-[44px] min-w-[44px] text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
-          style={{ color: getIndicatorColor() }}
-          aria-label={loading && stoppable ? 'Stop' : 'Send'}
-        >
-          {getIndicatorContent()}
-        </button>
-      )}
+      <div class="relative flex-1">
+        <textarea
+          ref={textareaRef}
+          autoFocus
+          class="w-full resize-none p-2 border text-sm glass-input focus:outline-none transition-all duration-200 min-h-[44px]"
+          style={{
+            background: '#000',
+            color: 'var(--arctic-message)',
+            borderColor: 'rgba(var(--arctic-accent-rgb), 0.2)',
+            borderRadius: '2px',
+            paddingRight: '2.5rem',
+          }}
+          onFocus={(e) => {
+            const t = e.target as HTMLTextAreaElement
+            t.style.borderColor = 'rgba(var(--arctic-accent-rgb), 0.5)'
+            t.style.boxShadow = '0 0 8px rgba(var(--arctic-accent-rgb), 0.3)'
+          }}
+          onBlur={(e) => {
+            const t = e.target as HTMLTextAreaElement
+            t.style.borderColor = 'rgba(var(--arctic-accent-rgb), 0.2)'
+            t.style.boxShadow = 'none'
+          }}
+          placeholder="..."
+          aria-label="Enter your prompt..."
+          value={text}
+          onInput={handleInput}
+          onKeyDown={handleKeyDown}
+          rows={1}
+          readOnly={isPending}
+          disabled={loading}
+        />
+        {showIndicator && (
+          <button
+            type="button"
+            data-testid="indicator"
+            onClick={handleIndicatorClick}
+            class={`absolute right-1 inset-y-0 flex items-center justify-center px-1 min-h-[44px] min-w-[44px] text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
+            style={{ color: getIndicatorColor() }}
+            aria-label={loading && stoppable ? 'Stop' : 'Send'}
+          >
+            {getIndicatorContent()}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
