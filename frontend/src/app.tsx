@@ -9,6 +9,7 @@ import { SettingsPanel } from './components/SettingsPanel'
 import {
   messages,
   loading,
+  stoppable,
   error,
   sessionId,
   settingsOpen,
@@ -135,6 +136,7 @@ export function App() {
             onContinue={handleContinue}
             onCancel={handleCancel}
             loading={loading.value}
+            stoppable={stoppable.value}
           />
         </div>
       </div>

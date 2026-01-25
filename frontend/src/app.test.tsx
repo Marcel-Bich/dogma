@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, fireEvent, cleanup } from '@testing-library/preact'
+import { render, fireEvent, cleanup, act } from '@testing-library/preact'
 import { App } from './app'
 import * as state from './state'
 import * as themes from './themes'
@@ -55,6 +55,7 @@ vi.spyOn(state, 'loadSessions').mockResolvedValue(undefined)
 
 describe('App', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllMocks()
     registeredCallback = null
     state.resetState()
@@ -63,6 +64,7 @@ describe('App', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     cleanup()
   })
 
@@ -162,36 +164,39 @@ describe('App', () => {
   })
 
   describe('send handler', () => {
-    it('calls backend.sendPrompt with text when send is triggered', async () => {
-      const { getByLabelText, getByRole } = render(<App />)
+    it('calls backend.sendPrompt with text when send is triggered', () => {
+      const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test prompt' } })
-
-      const sendButton = getByRole('button', { name: /send/i })
-      fireEvent.click(sendButton)
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
 
       expect(mockBackend.sendPrompt).toHaveBeenCalledWith('test prompt')
     })
 
     it('sets loading=true when send is triggered', () => {
-      const { getByLabelText, getByRole } = render(<App />)
+      const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
-
-      const sendButton = getByRole('button', { name: /send/i })
-      fireEvent.click(sendButton)
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
 
       expect(state.loading.value).toBe(true)
     })
 
     it('clears error when send is triggered', () => {
       state.setError('previous error')
-      const { getByLabelText, getByRole } = render(<App />)
+      const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
-
-      const sendButton = getByRole('button', { name: /send/i })
-      fireEvent.click(sendButton)
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
 
       expect(state.error.value).toBeNull()
     })
@@ -199,35 +204,42 @@ describe('App', () => {
 
   describe('continue handler', () => {
     it('calls backend.continuePrompt with text when continue is triggered', () => {
-      const { getByLabelText, getByRole } = render(<App />)
+      const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'resume work' } })
-
-      const continueButton = getByRole('button', { name: /continue session/i })
-      fireEvent.click(continueButton)
+      // First Enter triggers pending, second Enter toggles to continue mode
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
 
       expect(mockBackend.continuePrompt).toHaveBeenCalledWith('resume work')
     })
 
     it('sets loading=true when continue is triggered', () => {
-      const { getByLabelText, getByRole } = render(<App />)
+      const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
-
-      const continueButton = getByRole('button', { name: /continue session/i })
-      fireEvent.click(continueButton)
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
 
       expect(state.loading.value).toBe(true)
     })
 
     it('clears error when continue is triggered', () => {
       state.setError('previous error')
-      const { getByLabelText, getByRole } = render(<App />)
+      const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
-
-      const continueButton = getByRole('button', { name: /continue session/i })
-      fireEvent.click(continueButton)
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
 
       expect(state.error.value).toBeNull()
     })
@@ -236,10 +248,12 @@ describe('App', () => {
   describe('cancel handler', () => {
     it('calls backend.cancelPrompt when cancel is triggered', () => {
       state.setLoading(true)
-      const { getByRole } = render(<App />)
+      state.setStoppable(true)
+      const { getByTestId } = render(<App />)
 
-      const cancelButton = getByRole('button', { name: /cancel/i })
-      fireEvent.click(cancelButton)
+      // When loading and stoppable, indicator shows # and calls onCancel when clicked
+      const indicator = getByTestId('indicator')
+      fireEvent.click(indicator)
 
       expect(mockBackend.cancelPrompt).toHaveBeenCalledTimes(1)
     })

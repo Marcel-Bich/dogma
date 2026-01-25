@@ -86,3 +86,20 @@ body {
   animation: scanline 20s linear infinite;
   pointer-events: none;
 }
+
+/* Shimmer animation for pending state */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-overlay {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(var(--arctic-accent-rgb), 0.1) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
