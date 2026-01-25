@@ -61,13 +61,14 @@ describe('ChatInput', () => {
       expect(indicator.className).toContain('absolute')
     })
 
-    it('indicator is vertically centered using top-1/2 and -translate-y-1/2', () => {
+    it('indicator fills full height using h-full and flexbox centering', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
       const indicator = getByTestId('indicator')
-      expect(indicator.className).toContain('top-1/2')
-      expect(indicator.className).toContain('-translate-y-1/2')
+      expect(indicator.className).toContain('top-0')
+      expect(indicator.className).toContain('bottom-0')
+      expect(indicator.className).toContain('h-full')
       expect(indicator.className).toContain('flex')
       expect(indicator.className).toContain('items-center')
       expect(indicator.className).toContain('justify-center')
@@ -79,13 +80,13 @@ describe('ChatInput', () => {
       expect(textarea.style.paddingRight).toBe('3rem')
     })
 
-    it('indicator button is 32px wide and 36px tall', () => {
+    it('indicator button is 32px wide and fills full container height', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
       const indicator = getByTestId('indicator')
       expect(indicator.className).toContain('w-8')
-      expect(indicator.className).toContain('h-[36px]')
+      expect(indicator.className).toContain('h-full')
     })
   })
 
@@ -404,6 +405,16 @@ describe('ChatInput', () => {
       expect(textarea.hasAttribute('autofocus')).toBe(true)
     })
 
+    it('textarea receives async focus after 250ms delay', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      const focusSpy = vi.spyOn(textarea, 'focus')
+      act(() => {
+        vi.advanceTimersByTime(250)
+      })
+      expect(focusSpy).toHaveBeenCalled()
+    })
+
     it('textarea has rows=1 for compact mobile layout', () => {
       const { getByLabelText } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
@@ -414,6 +425,12 @@ describe('ChatInput', () => {
       const { getByLabelText } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
       expect(textarea.className).toContain('min-h-[44px]')
+    })
+
+    it('textarea has max-height of 55vh for autogrow', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      expect(textarea.className).toContain('max-h-[55vh]')
     })
 
     it('applies accent glow on focus', () => {
