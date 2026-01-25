@@ -38,11 +38,11 @@ describe('ChatInput', () => {
       expect(queryByTestId('indicator')).toBeTruthy()
     })
 
-    it('indicator shows > symbol when text exists', () => {
+    it('indicator shows \u25b8 symbol when text exists', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
-      expect(getByTestId('indicator').textContent).toBe('>')
+      expect(getByTestId('indicator').textContent).toBe('\u25b8')
     })
 
     it('indicator is dim when not in pending state', () => {
@@ -51,6 +51,31 @@ describe('ChatInput', () => {
       fireEvent.input(textarea, { target: { value: 'test' } })
       const indicator = getByTestId('indicator')
       expect(indicator.className).toContain('opacity-40')
+    })
+
+    it('indicator is positioned absolutely inside textarea container', () => {
+      const { getByLabelText, getByTestId } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      const indicator = getByTestId('indicator')
+      expect(indicator.className).toContain('absolute')
+    })
+
+    it('indicator is vertically centered using inset-y-0 and flex', () => {
+      const { getByLabelText, getByTestId } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      const indicator = getByTestId('indicator')
+      expect(indicator.className).toContain('inset-y-0')
+      expect(indicator.className).toContain('flex')
+      expect(indicator.className).toContain('items-center')
+      expect(indicator.className).toContain('justify-center')
+    })
+
+    it('textarea has padding-right for indicator space', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      expect(textarea.style.paddingRight).toBe('2.5rem')
     })
   })
 
@@ -76,9 +101,9 @@ describe('ChatInput', () => {
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
       fireEvent.click(getByTestId('indicator'))
-      expect(getByTestId('indicator').textContent).toBe('>')
+      expect(getByTestId('indicator').textContent).toBe('\u25b8')
       fireEvent.click(getByTestId('indicator'))
-      expect(getByTestId('indicator').textContent).toBe('>>')
+      expect(getByTestId('indicator').textContent).toBe('\u25b8\u25b8')
     })
   })
 
@@ -128,34 +153,34 @@ describe('ChatInput', () => {
   })
 
   describe('session toggle', () => {
-    it('first Enter shows > indicator (odd count)', () => {
+    it('first Enter shows \u25b8 indicator (odd count)', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-      expect(getByTestId('indicator').textContent).toBe('>')
+      expect(getByTestId('indicator').textContent).toBe('\u25b8')
     })
 
-    it('second Enter shows >> indicator (even count)', () => {
-      const { getByLabelText, getByTestId } = setup()
-      const textarea = getByLabelText('Enter your prompt...')
-      fireEvent.input(textarea, { target: { value: 'test' } })
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-      expect(getByTestId('indicator').textContent).toBe('>>')
-    })
-
-    it('third Enter shows > indicator again (odd count)', () => {
+    it('second Enter shows \u25b8\u25b8 indicator (even count)', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-      expect(getByTestId('indicator').textContent).toBe('>')
+      expect(getByTestId('indicator').textContent).toBe('\u25b8\u25b8')
     })
 
-    it('even Enter count shows red >> indicator', () => {
+    it('third Enter shows \u25b8 indicator again (odd count)', () => {
+      const { getByLabelText, getByTestId } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      expect(getByTestId('indicator').textContent).toBe('\u25b8')
+    })
+
+    it('even Enter count shows red \u25b8\u25b8 indicator', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
@@ -265,10 +290,10 @@ describe('ChatInput', () => {
   })
 
   describe('loading states', () => {
-    it('indicator shows > dim during loading', () => {
+    it('indicator shows \u25b8 dim during loading', () => {
       const { getByTestId } = setup({ loading: true })
       const indicator = getByTestId('indicator')
-      expect(indicator.textContent).toBe('>')
+      expect(indicator.textContent).toBe('\u25b8')
       expect(indicator.className).toContain('opacity-40')
     })
 
@@ -344,6 +369,12 @@ describe('ChatInput', () => {
     it('renders textarea with aria-label', () => {
       const { getByLabelText } = setup()
       expect(getByLabelText('Enter your prompt...')).toBeTruthy()
+    })
+
+    it('textarea has autoFocus attribute for immediate typing', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      expect(textarea.hasAttribute('autofocus')).toBe(true)
     })
 
     it('textarea has rows=1 for compact mobile layout', () => {
