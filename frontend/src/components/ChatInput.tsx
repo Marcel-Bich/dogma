@@ -106,7 +106,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
       }
     }
 
-    if (e.key === 'ArrowUp' && state === 'pending') {
+    if ((e.key === 'ArrowUp' || e.key === 'Escape') && state === 'pending') {
       cancelAndEdit()
     }
   }
@@ -154,9 +154,24 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
     }
   }
 
-  function getIndicatorContent(): string {
-    if (loading && stoppable) return '#'
+  function renderIndicatorContent() {
+    // Loading + stoppable: CSS square (stop button)
+    if (loading && stoppable) {
+      return <span class="stop-square w-3 h-3 bg-current inline-block" />
+    }
+    // Loading (not stoppable): animated dots
+    if (loading) {
+      return (
+        <span class="loading-dots flex gap-0.5">
+          <span class="w-1 h-1 bg-current rounded-full animate-loading-dot" style={{ animationDelay: '0ms' }} />
+          <span class="w-1 h-1 bg-current rounded-full animate-loading-dot" style={{ animationDelay: '150ms' }} />
+          <span class="w-1 h-1 bg-current rounded-full animate-loading-dot" style={{ animationDelay: '300ms' }} />
+        </span>
+      )
+    }
+    // Pending with even count: double play
     if (state === 'pending' && enterCount % 2 === 0) return '\u25b8\u25b8'
+    // Default: single play
     return '\u25b8'
   }
 
@@ -196,7 +211,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
             color: 'var(--arctic-message)',
             borderColor: 'rgba(var(--arctic-accent-rgb), 0.2)',
             borderRadius: '2px',
-            paddingRight: '2.5rem',
+            paddingRight: '3rem',
           }}
           onFocus={(e) => {
             const t = e.target as HTMLTextAreaElement
@@ -222,11 +237,11 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
             type="button"
             data-testid="indicator"
             onClick={handleIndicatorClick}
-            class={`absolute right-1 inset-y-0 flex items-center justify-center px-1 min-h-[44px] min-w-[44px] text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
+            class={`absolute right-1 inset-y-0 flex items-center justify-center w-8 min-h-[44px] text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
             style={{ color: getIndicatorColor() }}
             aria-label={loading && stoppable ? 'Stop' : 'Send'}
           >
-            {getIndicatorContent()}
+            {renderIndicatorContent()}
           </button>
         )}
       </div>
