@@ -24,8 +24,8 @@ export function MessageList({ messages, loading }: Props) {
             <div
               class="absolute rounded-full"
               style={{
-                width: '60px',
-                height: '60px',
+                width: '80px',
+                height: '80px',
                 border: '1px solid rgba(var(--arctic-accent-rgb), 0.5)',
                 animation: 'pulse-ring 3s ease-in-out infinite',
               }}
@@ -33,8 +33,8 @@ export function MessageList({ messages, loading }: Props) {
             <div
               class="absolute rounded-full"
               style={{
-                width: '110px',
-                height: '110px',
+                width: '120px',
+                height: '120px',
                 border: '1px solid rgba(var(--arctic-accent-rgb), 0.25)',
                 animation: 'pulse-ring 3.5s ease-in-out infinite 1.5s',
               }}
@@ -46,7 +46,7 @@ export function MessageList({ messages, loading }: Props) {
                 color: 'var(--arctic-dim)',
                 letterSpacing: '0.25em',
                 fontWeight: 300,
-                marginLeft: '0.125em',
+                marginLeft: '0.2em',
               }}
             >
               DOGMA
