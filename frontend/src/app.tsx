@@ -16,6 +16,8 @@ import {
   activeThemeId,
   customAccent,
   intensity,
+  spellCheck,
+  backgroundColor,
   handleBridgeEvent,
   setLoading,
   setError,
@@ -23,6 +25,8 @@ import {
   setActiveTheme,
   setCustomAccent,
   setIntensity,
+  setSpellCheck,
+  setBackgroundColor,
 } from './state'
 import { loadTheme, getThemeColors, applyTheme, applyIntensity, saveTheme } from './themes'
 import type { BridgeEvent } from './types'
@@ -36,6 +40,8 @@ export function App() {
     setActiveTheme(stored.presetId)
     setCustomAccent(stored.customAccent)
     setIntensity(stored.intensity)
+    setSpellCheck(stored.spellCheck)
+    setBackgroundColor(stored.backgroundColor)
     const colors = getThemeColors(stored.presetId, stored.customAccent)
     applyTheme(colors)
     const accent = stored.customAccent || colors.accent
@@ -90,7 +96,7 @@ export function App() {
     const colors = getThemeColors(id, null)
     applyTheme(colors)
     applyIntensity(intensity.value, colors.accent)
-    saveTheme(id, null, intensity.value)
+    saveTheme(id, null, intensity.value, spellCheck.value, backgroundColor.value)
   }
 
   function handleCustomAccent(hex: string) {
@@ -98,14 +104,24 @@ export function App() {
     const colors = getThemeColors(activeThemeId.value, hex)
     applyTheme(colors)
     applyIntensity(intensity.value, hex)
-    saveTheme(activeThemeId.value, hex, intensity.value)
+    saveTheme(activeThemeId.value, hex, intensity.value, spellCheck.value, backgroundColor.value)
   }
 
   function handleIntensity(val: number) {
     setIntensity(val)
     const accent = customAccent.value || getThemeColors(activeThemeId.value, null).accent
     applyIntensity(val, accent)
-    saveTheme(activeThemeId.value, customAccent.value, val)
+    saveTheme(activeThemeId.value, customAccent.value, val, spellCheck.value, backgroundColor.value)
+  }
+
+  function handleSpellCheck(val: boolean) {
+    setSpellCheck(val)
+    saveTheme(activeThemeId.value, customAccent.value, intensity.value, val, backgroundColor.value)
+  }
+
+  function handleBackgroundColor(hex: string) {
+    setBackgroundColor(hex)
+    saveTheme(activeThemeId.value, customAccent.value, intensity.value, spellCheck.value, hex)
   }
 
   function handleSelectSession(id: string) {
@@ -113,7 +129,7 @@ export function App() {
   }
 
   return (
-    <div class="flex flex-col h-screen bg-black relative overflow-hidden scanline">
+    <div class="flex flex-col h-screen relative overflow-hidden scanline" style={{ backgroundColor: backgroundColor.value }}>
       <div class="relative z-10 flex items-center justify-end px-4 py-1 bg-black border-b shadow-md bg-gradient-to-b from-black to-black" style={{ borderColor: 'var(--arctic-border)' }}>
         <Menu
           showSessions={showSessions}
@@ -144,6 +160,7 @@ export function App() {
             onCancel={handleCancel}
             loading={loading.value}
             stoppable={stoppable.value}
+            spellCheck={spellCheck.value}
           />
         </div>
       </div>
@@ -160,9 +177,13 @@ export function App() {
         activePresetId={activeThemeId.value}
         customAccent={customAccent.value}
         intensity={intensity.value}
+        spellCheck={spellCheck.value}
+        backgroundColor={backgroundColor.value}
         onSelectPreset={handleSelectPreset}
         onCustomAccentChange={handleCustomAccent}
         onIntensityChange={handleIntensity}
+        onSpellCheckChange={handleSpellCheck}
+        onBackgroundColorChange={handleBackgroundColor}
       />
     </div>
   )

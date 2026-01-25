@@ -22,6 +22,8 @@ export const settingsOpen = signal(false)
 export const activeThemeId = signal<string>('arctic-pro')
 export const customAccent = signal<string | null>(null)
 export const intensity = signal(50)
+export const spellCheck = signal(false)
+export const backgroundColor = signal('#000000')
 
 let currentMessage: ChatMessage | null = null
 let finalized = false
@@ -146,6 +148,14 @@ export function setIntensity(val: number): void {
   intensity.value = val
 }
 
+export function setSpellCheck(value: boolean): void {
+  spellCheck.value = value
+}
+
+export function setBackgroundColor(value: string): void {
+  backgroundColor.value = value
+}
+
 export async function loadSessions(listFn: () => Promise<SessionInfo[]>): Promise<void> {
   sessionsLoading.value = true
   try {
@@ -173,6 +183,8 @@ export function resetState(): void {
   activeThemeId.value = 'arctic-pro'
   customAccent.value = null
   intensity.value = 50
+  spellCheck.value = false
+  backgroundColor.value = '#000000'
   currentMessage = null
   finalized = false
   idCounter = 0
