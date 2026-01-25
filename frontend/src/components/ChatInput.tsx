@@ -41,6 +41,14 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
     }
   }, [])
 
+  // Async focus after 250ms for reliable focus after page reload
+  useEffect(() => {
+    const focusTimer = setTimeout(() => {
+      textareaRef.current?.focus()
+    }, 250)
+    return () => clearTimeout(focusTimer)
+  }, [])
+
   function cancelPending() {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
@@ -145,9 +153,9 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
 
   function autoGrow(el: HTMLTextAreaElement) {
     el.style.height = 'auto'
-    const lineHeight = 20
-    const maxHeight = lineHeight * 5
-    el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px'
+    // Max-height is set via CSS class (max-h-[55vh])
+    // Just set the height to scrollHeight, CSS will cap it
+    el.style.height = el.scrollHeight + 'px'
   }
 
   function resetHeight() {
@@ -207,7 +215,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
         <textarea
           ref={textareaRef}
           autoFocus
-          class="w-full resize-none p-2 border text-sm glass-input focus:outline-none transition-all duration-200 min-h-[44px]"
+          class="w-full resize-none p-2 border text-sm glass-input focus:outline-none transition-all duration-200 min-h-[44px] max-h-[55vh]"
           style={{
             background: '#000',
             color: 'var(--arctic-message)',
@@ -239,7 +247,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
             type="button"
             data-testid="indicator"
             onClick={handleIndicatorClick}
-            class={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-[36px] text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
+            class={`absolute right-1 top-0 bottom-0 flex items-center justify-center w-8 h-full text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
             style={{ color: getIndicatorColor() }}
             aria-label={loading && stoppable ? 'Stop' : 'Send'}
           >
