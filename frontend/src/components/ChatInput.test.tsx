@@ -311,6 +311,19 @@ describe('ChatInput', () => {
       })
       expect(textarea.value).toBe('')
     })
+
+    it('resets textarea height after auto-send', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      // Simulate multi-line content that would change height
+      fireEvent.input(textarea, { target: { value: 'line1\nline2\nline3' } })
+      textarea.style.height = '100px'
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(textarea.style.height).toBe('auto')
+    })
   })
 
   describe('loading states', () => {
@@ -343,6 +356,13 @@ describe('ChatInput', () => {
       expect(props.onCancel).toHaveBeenCalledTimes(1)
     })
 
+    it('clicking indicator during loading (not stoppable) does nothing', () => {
+      const { getByTestId, props } = setup({ loading: true, stoppable: false })
+      fireEvent.click(getByTestId('indicator'))
+      expect(props.onCancel).not.toHaveBeenCalled()
+      expect(props.onSend).not.toHaveBeenCalled()
+    })
+
     it('textarea is disabled during loading', () => {
       const { getByLabelText } = setup({ loading: true })
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
@@ -364,6 +384,27 @@ describe('ChatInput', () => {
       // Should show dim indicator (ready state, not pending)
       const indicator = getByTestId('indicator')
       expect(indicator.className).toContain('opacity-40')
+    })
+
+    it('returns to idle state when loading ends without text', () => {
+      const { queryByTestId, rerender, props } = setup({ loading: true })
+      // No text input
+      // Rerender with loading=false
+      rerender(<ChatInput {...props} loading={false} />)
+      // No indicator when idle without text
+      expect(queryByTestId('indicator')).toBeNull()
+    })
+
+    it('does not change state when loading=false but not in loading state', () => {
+      const { getByLabelText, getByTestId, rerender, props } = setup({ loading: false })
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      // Currently in ready state with text
+      expect(getByTestId('indicator').className).toContain('opacity-40')
+      // Rerender with loading=false (no change)
+      rerender(<ChatInput {...props} loading={false} />)
+      // Should remain in ready state
+      expect(getByTestId('indicator').className).toContain('opacity-40')
     })
   })
 
@@ -390,6 +431,16 @@ describe('ChatInput', () => {
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       expect(queryByTestId('shimmer')).toBeNull()
       expect(props.onSend).not.toHaveBeenCalled()
+    })
+
+    it('ArrowUp outside pending state does nothing', () => {
+      const { getByLabelText, getByTestId } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      // In ready state, not pending
+      fireEvent.keyDown(textarea, { key: 'ArrowUp' })
+      // Should still be in ready state with dim indicator
+      expect(getByTestId('indicator').className).toContain('opacity-40')
     })
   })
 

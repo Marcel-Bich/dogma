@@ -390,6 +390,35 @@ describe('App', () => {
       expect(themes.applyIntensity).toHaveBeenCalled()
       expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', '#ff5500', 50)
     })
+
+    it('intensity slider updates theme and saves', () => {
+      const { getByRole, getByText, getByLabelText } = render(<App />)
+      // Open settings
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Settings'))
+      // Change intensity slider
+      const slider = getByLabelText('Intensity')
+      fireEvent.input(slider, { target: { value: '75' } })
+      expect(state.intensity.value).toBe(75)
+      expect(themes.applyIntensity).toHaveBeenCalled()
+      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', null, 75)
+    })
+
+    it('intensity slider uses custom accent when available', () => {
+      const { getByRole, getByText, getByLabelText } = render(<App />)
+      // Open settings
+      fireEvent.click(getByRole('button', { name: 'Menu' }))
+      fireEvent.click(getByText('Settings'))
+      // First set a custom accent via the color picker
+      const colorInput = getByLabelText('Custom accent color')
+      fireEvent.input(colorInput, { target: { value: '#ff0000' } })
+      vi.clearAllMocks()
+      // Now change intensity slider
+      const slider = getByLabelText('Intensity')
+      fireEvent.input(slider, { target: { value: '60' } })
+      expect(themes.applyIntensity).toHaveBeenCalledWith(60, '#ff0000')
+      expect(themes.saveTheme).toHaveBeenCalledWith('arctic-pro', '#ff0000', 60)
+    })
   })
 
   describe('session panel', () => {
