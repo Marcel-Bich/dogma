@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   messages,
   loading,
+  stoppable,
   error,
   sessionId,
   sessions,
@@ -15,6 +16,7 @@ import {
   addMessage,
   handleBridgeEvent,
   setLoading,
+  setStoppable,
   setError,
   setMenuOpen,
   setSettingsOpen,
@@ -292,6 +294,19 @@ describe('state', () => {
     })
   })
 
+  describe('setStoppable', () => {
+    it('sets stoppable to true', () => {
+      setStoppable(true)
+      expect(stoppable.value).toBe(true)
+    })
+
+    it('sets stoppable to false', () => {
+      setStoppable(true)
+      setStoppable(false)
+      expect(stoppable.value).toBe(false)
+    })
+  })
+
   describe('setError', () => {
     it('sets error message', () => {
       setError('something went wrong')
@@ -316,6 +331,7 @@ describe('state', () => {
       }
       addMessage(msg)
       setLoading(true)
+      setStoppable(true)
       setError('some error')
       handleBridgeEvent({ type: 'system', session_id: 'sess-1' })
 
@@ -324,6 +340,7 @@ describe('state', () => {
 
       expect(messages.value).toEqual([])
       expect(loading.value).toBe(false)
+      expect(stoppable.value).toBe(false)
       expect(error.value).toBeNull()
       expect(sessionId.value).toBeNull()
     })

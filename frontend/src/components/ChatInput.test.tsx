@@ -1,4 +1,4 @@
-import { render, fireEvent, waitFor } from '@testing-library/preact'
+import { render, fireEvent, act } from '@testing-library/preact'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ChatInput } from './ChatInput'
 
@@ -69,6 +69,16 @@ describe('ChatInput', () => {
       fireEvent.input(textarea, { target: { value: 'test' } })
       const indicator = getByTestId('indicator')
       expect(indicator.tagName.toLowerCase()).toBe('button')
+    })
+
+    it('clicking indicator during pending toggles session mode', () => {
+      const { getByLabelText, getByTestId } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      fireEvent.click(getByTestId('indicator'))
+      expect(getByTestId('indicator').textContent).toBe('>')
+      fireEvent.click(getByTestId('indicator'))
+      expect(getByTestId('indicator').textContent).toBe('>>')
     })
   })
 
@@ -182,67 +192,75 @@ describe('ChatInput', () => {
   })
 
   describe('auto-send after timeout', () => {
-    it('calls onSend after 2 seconds with odd enter count', async () => {
+    it('calls onSend after 2 seconds with odd enter count', () => {
       const { getByLabelText, props } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test message' } })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       expect(props.onSend).not.toHaveBeenCalled()
-      vi.advanceTimersByTime(2000)
-      await waitFor(() => {
-        expect(props.onSend).toHaveBeenCalledWith('test message')
+      act(() => {
+        vi.advanceTimersByTime(2000)
       })
+      expect(props.onSend).toHaveBeenCalledWith('test message')
     })
 
-    it('calls onContinue after 2 seconds with even enter count', async () => {
+    it('calls onContinue after 2 seconds with even enter count', () => {
       const { getByLabelText, props } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test message' } })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       expect(props.onContinue).not.toHaveBeenCalled()
-      vi.advanceTimersByTime(2000)
-      await waitFor(() => {
-        expect(props.onContinue).toHaveBeenCalledWith('test message')
+      act(() => {
+        vi.advanceTimersByTime(2000)
       })
+      expect(props.onContinue).toHaveBeenCalledWith('test message')
     })
 
-    it('does not send if cancelled before timeout', async () => {
+    it('does not send if cancelled before timeout', () => {
       const { getByLabelText, props } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-      vi.advanceTimersByTime(1000)
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
       fireEvent.keyDown(textarea, { key: 'ArrowUp' })
-      vi.advanceTimersByTime(2000)
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
       expect(props.onSend).not.toHaveBeenCalled()
     })
 
-    it('timer resets when toggling session mode', async () => {
+    it('timer resets when toggling session mode', () => {
       const { getByLabelText, props } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-      vi.advanceTimersByTime(1500)
+      act(() => {
+        vi.advanceTimersByTime(1500)
+      })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-      vi.advanceTimersByTime(1500)
+      act(() => {
+        vi.advanceTimersByTime(1500)
+      })
       expect(props.onSend).not.toHaveBeenCalled()
       expect(props.onContinue).not.toHaveBeenCalled()
-      vi.advanceTimersByTime(500)
-      await waitFor(() => {
-        expect(props.onContinue).toHaveBeenCalledWith('test')
+      act(() => {
+        vi.advanceTimersByTime(500)
       })
+      expect(props.onContinue).toHaveBeenCalledWith('test')
     })
 
-    it('clears input after auto-send', async () => {
+    it('clears input after auto-send', () => {
       const { getByLabelText } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
       fireEvent.input(textarea, { target: { value: 'test' } })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-      vi.advanceTimersByTime(2000)
-      await waitFor(() => {
-        expect(textarea.value).toBe('')
+      act(() => {
+        vi.advanceTimersByTime(2000)
       })
+      expect(textarea.value).toBe('')
     })
   })
 
@@ -281,6 +299,18 @@ describe('ChatInput', () => {
     it('indicator visible during loading even with empty text', () => {
       const { queryByTestId } = setup({ loading: true })
       expect(queryByTestId('indicator')).toBeTruthy()
+    })
+
+    it('returns to ready state when loading ends with text', () => {
+      const { getByLabelText, getByTestId, rerender, props } = setup({ loading: true })
+      // Add text first
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      // Rerender with loading=false
+      rerender(<ChatInput {...props} loading={false} />)
+      // Should show dim indicator (ready state, not pending)
+      const indicator = getByTestId('indicator')
+      expect(indicator.className).toContain('opacity-40')
     })
   })
 
@@ -326,6 +356,32 @@ describe('ChatInput', () => {
       const { getByLabelText } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
       expect(textarea.className).toContain('min-h-[44px]')
+    })
+
+    it('applies accent glow on focus', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      fireEvent.focus(textarea)
+      expect(textarea.style.borderColor).toBe('rgba(var(--arctic-accent-rgb), 0.5)')
+      expect(textarea.style.boxShadow).toContain('var(--arctic-accent-rgb)')
+    })
+
+    it('removes glow on blur', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      fireEvent.focus(textarea)
+      fireEvent.blur(textarea)
+      expect(textarea.style.borderColor).toBe('rgba(var(--arctic-accent-rgb), 0.2)')
+      expect(textarea.style.boxShadow).toBe('none')
+    })
+
+    it('clearing text returns state to idle', () => {
+      const { getByLabelText, queryByTestId } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'hello' } })
+      expect(queryByTestId('indicator')).toBeTruthy()
+      fireEvent.input(textarea, { target: { value: '' } })
+      expect(queryByTestId('indicator')).toBeNull()
     })
   })
 })

@@ -1,44 +1,143 @@
-import { useState, useRef } from 'preact/hooks'
+import { useState, useRef, useEffect } from 'preact/hooks'
 
 interface ChatInputProps {
   onSend: (text: string) => void
   onContinue: (text: string) => void
   onCancel: () => void
   loading: boolean
+  stoppable?: boolean
 }
 
-export function ChatInput({ onSend, onContinue, onCancel, loading }: ChatInputProps) {
+type InputState = 'idle' | 'ready' | 'pending' | 'loading'
+
+export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = false }: ChatInputProps) {
   const [text, setText] = useState('')
+  const [state, setState] = useState<InputState>('idle')
+  const [enterCount, setEnterCount] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const enterCountRef = useRef(0)
 
   const trimmed = text.trim()
-  const canSend = trimmed.length > 0 && !loading
-  const showActions = trimmed.length > 0 || loading
+  const hasText = trimmed.length > 0
+  const showIndicator = hasText || loading
 
-  function handleSend() {
-    if (!canSend) return
-    onSend(trimmed)
+  // Sync external loading state
+  useEffect(() => {
+    if (loading) {
+      setState('loading')
+      cancelPending()
+    } else if (state === 'loading') {
+      setState(hasText ? 'ready' : 'idle')
+    }
+  }, [loading])
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+      }
+    }
+  }, [])
+
+  function cancelPending() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    setEnterCount(0)
+    enterCountRef.current = 0
+  }
+
+  function startPending() {
+    setState('pending')
+    setEnterCount(1)
+    enterCountRef.current = 1
+    startTimer()
+  }
+
+  function toggleSession() {
+    const newCount = enterCountRef.current + 1
+    setEnterCount(newCount)
+    enterCountRef.current = newCount
+    startTimer()
+  }
+
+  function startTimer() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+    }
+    timerRef.current = setTimeout(() => {
+      executeAction()
+    }, 2000)
+  }
+
+  function executeAction() {
+    const isNewSession = enterCountRef.current % 2 === 0
+    if (isNewSession) {
+      onContinue(trimmed)
+    } else {
+      onSend(trimmed)
+    }
     setText('')
+    setState('idle')
+    setEnterCount(0)
+    enterCountRef.current = 0
     resetHeight()
   }
 
-  function handleContinue() {
-    if (!canSend) return
-    onContinue(trimmed)
-    setText('')
-    resetHeight()
+  function cancelAndEdit() {
+    cancelPending()
+    setState('ready')
   }
 
   function handleKeyDown(e: KeyboardEvent) {
+    if (loading) return
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSend()
+      if (!hasText) return
+
+      if (state === 'ready' || state === 'idle') {
+        startPending()
+      } else if (state === 'pending') {
+        toggleSession()
+      }
     }
+
+    if (e.key === 'ArrowUp' && state === 'pending') {
+      cancelAndEdit()
+    }
+  }
+
+  function handleIndicatorClick() {
+    if (loading && stoppable) {
+      onCancel()
+      return
+    }
+
+    if (loading || !hasText) return
+
+    if (state === 'ready' || state === 'idle') {
+      startPending()
+    } else if (state === 'pending') {
+      toggleSession()
+    }
+  }
+
+  function handleShimmerClick() {
+    cancelAndEdit()
   }
 
   function handleInput(e: Event) {
     const target = e.target as HTMLTextAreaElement
     setText(target.value)
+    if (target.value.trim().length > 0 && state === 'idle') {
+      setState('ready')
+    } else if (target.value.trim().length === 0) {
+      setState('idle')
+    }
     autoGrow(target)
   }
 
@@ -55,11 +154,41 @@ export function ChatInput({ onSend, onContinue, onCancel, loading }: ChatInputPr
     }
   }
 
+  function getIndicatorContent(): string {
+    if (loading && stoppable) return '#'
+    if (state === 'pending' && enterCount % 2 === 0) return '>>'
+    return '>'
+  }
+
+  function getIndicatorColor(): string {
+    if (state === 'pending' && enterCount % 2 === 0) {
+      return 'var(--arctic-error)'
+    }
+    return 'var(--arctic-cyan)'
+  }
+
+  function isIndicatorDim(): boolean {
+    if (loading && stoppable) return false
+    if (loading) return true
+    return state !== 'pending'
+  }
+
+  const isPending = state === 'pending'
+
   return (
-    <div class="flex flex-col p-3 bg-black border-t" style={{ borderColor: 'var(--arctic-border)' }}>
+    <div class="relative flex items-center p-3 bg-black border-t" style={{ borderColor: 'var(--arctic-border)' }}>
+      {isPending && (
+        <button
+          type="button"
+          data-testid="shimmer"
+          onClick={handleShimmerClick}
+          class="absolute inset-0 z-10 cursor-pointer bg-transparent border-none shimmer-overlay"
+          aria-label="Cancel pending"
+        />
+      )}
       <textarea
         ref={textareaRef}
-        class="w-full resize-none p-2 border text-sm glass-input focus:outline-none transition-all duration-200"
+        class="flex-1 resize-none p-2 border text-sm glass-input focus:outline-none transition-all duration-200 min-h-[44px]"
         style={{
           background: '#000',
           color: 'var(--arctic-message)',
@@ -82,45 +211,20 @@ export function ChatInput({ onSend, onContinue, onCancel, loading }: ChatInputPr
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         rows={1}
+        readOnly={isPending}
+        disabled={loading}
       />
-      {showActions && (
-        <div class="flex justify-end gap-1 mt-1" data-testid="action-bar">
-          {!loading && (
-            <>
-              <button
-                type="button"
-                aria-label="Continue session"
-                disabled={!canSend}
-                onClick={handleContinue}
-                class="px-2 min-h-[44px] text-xs uppercase tracking-wider transition-opacity duration-200 disabled:opacity-30"
-                style={{ color: 'var(--arctic-dim)', background: 'transparent', border: 'none' }}
-              >
-                CONT
-              </button>
-              <button
-                type="button"
-                aria-label="Send"
-                disabled={!canSend}
-                onClick={handleSend}
-                class="px-2 min-h-[44px] text-xs uppercase tracking-wider transition-opacity duration-200 disabled:opacity-30"
-                style={{ color: 'var(--arctic-cyan)', background: 'transparent', border: 'none' }}
-              >
-                EXEC
-              </button>
-            </>
-          )}
-          {loading && (
-            <button
-              type="button"
-              aria-label="Cancel"
-              onClick={onCancel}
-              class="px-2 min-h-[44px] text-xs uppercase tracking-wider transition-opacity duration-200"
-              style={{ color: 'var(--arctic-error)', background: 'transparent', border: 'none' }}
-            >
-              STOP
-            </button>
-          )}
-        </div>
+      {showIndicator && (
+        <button
+          type="button"
+          data-testid="indicator"
+          onClick={handleIndicatorClick}
+          class={`ml-2 px-2 min-h-[44px] min-w-[44px] text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
+          style={{ color: getIndicatorColor() }}
+          aria-label={loading && stoppable ? 'Stop' : 'Send'}
+        >
+          {getIndicatorContent()}
+        </button>
       )}
     </div>
   )

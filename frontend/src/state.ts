@@ -9,6 +9,7 @@ function generateId(): string {
 
 export const messages = signal<ChatMessage[]>([])
 export const loading = signal(false)
+export const stoppable = signal(false)
 export const error = signal<string | null>(null)
 export const sessionId = signal<string | null>(null)
 
@@ -117,6 +118,10 @@ export function setLoading(value: boolean): void {
   loading.value = value
 }
 
+export function setStoppable(value: boolean): void {
+  stoppable.value = value
+}
+
 export function setError(value: string | null): void {
   error.value = value
 }
@@ -157,6 +162,7 @@ export async function loadSessions(listFn: () => Promise<SessionInfo[]>): Promis
 export function resetState(): void {
   messages.value = []
   loading.value = false
+  stoppable.value = false
   error.value = null
   sessionId.value = null
   sessions.value = []
