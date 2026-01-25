@@ -15,11 +15,10 @@ import (
 // --- Test doubles ---
 
 type mockSpawner struct {
-	mu              sync.Mutex
-	sendPromptFn    func(ctx context.Context, prompt string, handler claude.EventHandler) error
-	sendWithSessFn  func(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error
-	sendContinueFn  func(ctx context.Context, prompt string, handler claude.EventHandler) error
-	cancelCalled    bool
+	mu             sync.Mutex
+	sendPromptFn   func(ctx context.Context, prompt string, handler claude.EventHandler) error
+	sendWithSessFn func(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error
+	cancelCalled   bool
 }
 
 func (m *mockSpawner) SendPrompt(ctx context.Context, prompt string, handler claude.EventHandler) error {
@@ -32,13 +31,6 @@ func (m *mockSpawner) SendPrompt(ctx context.Context, prompt string, handler cla
 func (m *mockSpawner) SendPromptWithSession(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error {
 	if m.sendWithSessFn != nil {
 		return m.sendWithSessFn(ctx, prompt, sessionID, handler)
-	}
-	return nil
-}
-
-func (m *mockSpawner) SendPromptContinue(ctx context.Context, prompt string, handler claude.EventHandler) error {
-	if m.sendContinueFn != nil {
-		return m.sendContinueFn(ctx, prompt, handler)
 	}
 	return nil
 }
@@ -471,175 +463,6 @@ func TestApplyUpdate_Error(t *testing.T) {
 	}
 	if events[0].data[0] != "download failed" {
 		t.Errorf("expected 'download failed', got %v", events[0].data[0])
-	}
-}
-
-// --- ContinuePrompt tests ---
-
-func TestContinuePrompt_CallsSendPromptContinue(t *testing.T) {
-	emitter := &mockEmitter{}
-	var calledPrompt string
-	spawner := &mockSpawner{
-		sendContinueFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
-			calledPrompt = prompt
-			return nil
-		},
-	}
-
-	app := &App{
-		ctx:     context.Background(),
-		spawner: spawner,
-		emitter: emitter,
-	}
-
-	app.ContinuePrompt("resume this")
-
-	// Wait for goroutine
-	time.Sleep(50 * time.Millisecond)
-
-	if calledPrompt != "resume this" {
-		t.Errorf("expected prompt 'resume this', got %q", calledPrompt)
-	}
-
-	events := emitter.getEvents()
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d: %+v", len(events), events)
-	}
-	if events[0].name != "claude:done" {
-		t.Errorf("expected 'claude:done', got %q", events[0].name)
-	}
-}
-
-func TestContinuePrompt_EmitsEvents(t *testing.T) {
-	emitter := &mockEmitter{}
-	spawner := &mockSpawner{
-		sendContinueFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
-			payload := []byte(`{"type":"system","subtype":"init","session_id":"resumed","model":"opus"}`)
-			handler(claude.StreamEvent{Type: "system", Payload: json.RawMessage(payload)})
-			return nil
-		},
-	}
-
-	app := &App{
-		ctx:     context.Background(),
-		spawner: spawner,
-		emitter: emitter,
-	}
-
-	app.ContinuePrompt("hello again")
-
-	// Wait for goroutine
-	time.Sleep(50 * time.Millisecond)
-
-	events := emitter.getEvents()
-	if len(events) != 2 {
-		t.Fatalf("expected 2 events, got %d: %+v", len(events), events)
-	}
-	if events[0].name != "claude:event" {
-		t.Errorf("expected 'claude:event', got %q", events[0].name)
-	}
-	bridge, ok := events[0].data[0].(claude.BridgeEvent)
-	if !ok {
-		t.Fatalf("expected BridgeEvent, got %T", events[0].data[0])
-	}
-	if bridge.SessionID != "resumed" {
-		t.Errorf("expected session_id 'resumed', got %q", bridge.SessionID)
-	}
-	if events[1].name != "claude:done" {
-		t.Errorf("expected 'claude:done', got %q", events[1].name)
-	}
-}
-
-func TestContinuePrompt_Error(t *testing.T) {
-	emitter := &mockEmitter{}
-	spawner := &mockSpawner{
-		sendContinueFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
-			return errors.New("continue failed")
-		},
-	}
-
-	app := &App{
-		ctx:     context.Background(),
-		spawner: spawner,
-		emitter: emitter,
-	}
-
-	app.ContinuePrompt("will fail")
-
-	// Wait for goroutine
-	time.Sleep(50 * time.Millisecond)
-
-	events := emitter.getEvents()
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event, got %d: %+v", len(events), events)
-	}
-	if events[0].name != "claude:error" {
-		t.Errorf("expected 'claude:error', got %q", events[0].name)
-	}
-	if events[0].data[0] != "continue failed" {
-		t.Errorf("expected 'continue failed', got %v", events[0].data[0])
-	}
-}
-
-func TestContinuePrompt_Handler_SkipsInvalidEvents(t *testing.T) {
-	emitter := &mockEmitter{}
-	spawner := &mockSpawner{
-		sendContinueFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
-			// Send invalid JSON - should be skipped
-			handler(claude.StreamEvent{Type: "system", Payload: json.RawMessage(`{invalid`)})
-			// Send empty type - should be skipped
-			handler(claude.StreamEvent{Type: "", Payload: json.RawMessage(`{"foo":"bar"}`)})
-			return nil
-		},
-	}
-
-	app := &App{
-		ctx:     context.Background(),
-		spawner: spawner,
-		emitter: emitter,
-	}
-
-	app.ContinuePrompt("test")
-
-	// Wait for goroutine
-	time.Sleep(50 * time.Millisecond)
-
-	events := emitter.getEvents()
-	// Only claude:done should be emitted (invalid events skipped)
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event (claude:done), got %d: %+v", len(events), events)
-	}
-	if events[0].name != "claude:done" {
-		t.Errorf("expected 'claude:done', got %q", events[0].name)
-	}
-}
-
-func TestContinuePrompt_DoesNotCallSendPrompt(t *testing.T) {
-	emitter := &mockEmitter{}
-	sendPromptCalled := false
-	spawner := &mockSpawner{
-		sendPromptFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
-			sendPromptCalled = true
-			return nil
-		},
-		sendContinueFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
-			return nil
-		},
-	}
-
-	app := &App{
-		ctx:     context.Background(),
-		spawner: spawner,
-		emitter: emitter,
-	}
-
-	app.ContinuePrompt("test")
-
-	// Wait for goroutine
-	time.Sleep(50 * time.Millisecond)
-
-	if sendPromptCalled {
-		t.Error("expected SendPrompt NOT to be called, but it was")
 	}
 }
 

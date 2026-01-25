@@ -4,7 +4,7 @@ import { MockBackend } from './backend.mock'
 
 export interface Backend {
   sendPrompt(text: string): Promise<void>
-  continuePrompt(text: string): Promise<void>
+  sendPromptWithSession(text: string, sessionId: string): Promise<void>
   cancelPrompt(): Promise<void>
   listSessions(): Promise<SessionInfo[]>
 }
@@ -29,8 +29,8 @@ export class WailsBackend implements BackendAdapter {
     return getWailsApp().SendPrompt(text)
   }
 
-  async continuePrompt(text: string): Promise<void> {
-    return getWailsApp().ContinuePrompt(text)
+  async sendPromptWithSession(text: string, sessionId: string): Promise<void> {
+    return getWailsApp().SendPromptWithSession(text, sessionId)
   }
 
   async cancelPrompt(): Promise<void> {

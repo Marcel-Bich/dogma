@@ -20,12 +20,12 @@ export function MessageList({ messages, loading }: Props) {
     <div class="flex flex-col gap-4 overflow-y-auto h-full p-4">
       {messages.length === 0 && !loading && (
         <div class="flex flex-col items-center justify-center h-full gap-4">
-          <div class="relative flex items-center justify-center" style={{ width: '120px', height: '120px' }}>
+          <div class="relative flex items-center justify-center" style={{ width: '140px', height: '140px' }}>
             <div
               class="absolute rounded-full"
               style={{
-                width: '70px',
-                height: '70px',
+                width: '60px',
+                height: '60px',
                 border: '1px solid rgba(var(--arctic-accent-rgb), 0.5)',
                 animation: 'pulse-ring 3s ease-in-out infinite',
               }}
@@ -41,11 +41,12 @@ export function MessageList({ messages, loading }: Props) {
             />
             <span
               data-testid="app-title"
-              class="absolute text-xs uppercase select-none"
+              class="absolute text-xs uppercase select-none text-center"
               style={{
                 color: 'var(--arctic-dim)',
-                letterSpacing: '0.3em',
+                letterSpacing: '0.25em',
                 fontWeight: 300,
+                marginLeft: '0.125em',
               }}
             >
               DOGMA

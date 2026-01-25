@@ -58,15 +58,22 @@ export function App() {
   }, [backend])
 
   function handleSend(text: string) {
+    // Start a completely new session
+    sessionId.value = null
     setLoading(true)
     setError(null)
     backend.sendPrompt(text)
   }
 
   function handleContinue(text: string) {
+    // Continue current session if one exists, otherwise start new
     setLoading(true)
     setError(null)
-    backend.continuePrompt(text)
+    if (sessionId.value) {
+      backend.sendPromptWithSession(text, sessionId.value)
+    } else {
+      backend.sendPrompt(text)
+    }
   }
 
   function handleCancel() {
