@@ -43,7 +43,7 @@ export class MockBackend implements BackendAdapter {
     this.emitMockEvents()
   }
 
-  async continuePrompt(_text: string): Promise<void> {
+  async sendPromptWithSession(_text: string, _sessionId: string): Promise<void> {
     this.emitMockEvents()
   }
 

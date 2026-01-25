@@ -74,11 +74,13 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   }
 
   function executeAction() {
+    // Odd count (1, 3, 5...) = continue current session
+    // Even count (2, 4, 6...) = start new session
     const isNewSession = enterCountRef.current % 2 === 0
     if (isNewSession) {
-      onContinue(trimmed)
-    } else {
       onSend(trimmed)
+    } else {
+      onContinue(trimmed)
     }
     setText('')
     setState('idle')
@@ -201,7 +203,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
           aria-label="Cancel pending"
         />
       )}
-      <div class="relative flex-1">
+      <div class="relative flex-1 flex items-stretch">
         <textarea
           ref={textareaRef}
           autoFocus
@@ -237,7 +239,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
             type="button"
             data-testid="indicator"
             onClick={handleIndicatorClick}
-            class={`absolute right-1 inset-y-0 flex items-center justify-center w-8 min-h-[44px] text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
+            class={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-[36px] text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
             style={{ color: getIndicatorColor() }}
             aria-label={loading && stoppable ? 'Stop' : 'Send'}
           >

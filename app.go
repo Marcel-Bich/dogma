@@ -13,7 +13,6 @@ import (
 type promptSpawner interface {
 	SendPrompt(ctx context.Context, prompt string, handler claude.EventHandler) error
 	SendPromptWithSession(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error
-	SendPromptContinue(ctx context.Context, prompt string, handler claude.EventHandler) error
 	Cancel()
 }
 
@@ -90,11 +89,6 @@ func (a *App) SendPromptWithSession(prompt string, sessionID string) {
 	go a.streamPrompt(prompt, sessionID)
 }
 
-// ContinuePrompt resumes the most recent Claude session with a new prompt.
-func (a *App) ContinuePrompt(prompt string) {
-	go a.streamPromptContinue(prompt)
-}
-
 // CancelPrompt cancels the currently running Claude process.
 func (a *App) CancelPrompt() {
 	a.spawner.Cancel()
@@ -151,24 +145,6 @@ func (a *App) streamPrompt(prompt string, sessionID string) {
 		err = a.spawner.SendPromptWithSession(a.ctx, prompt, sessionID, handler)
 	}
 
-	if err != nil {
-		a.emitter.Emit("claude:error", err.Error())
-	} else {
-		a.emitter.Emit("claude:done", nil)
-	}
-}
-
-func (a *App) streamPromptContinue(prompt string) {
-	handler := func(event claude.StreamEvent) {
-		parsed, err := claude.ParseEvent(event.Payload)
-		if err != nil || parsed.Type == "" {
-			return
-		}
-		bridge := claude.ToBridgeEvent(parsed)
-		a.emitter.Emit("claude:event", bridge)
-	}
-
-	err := a.spawner.SendPromptContinue(a.ctx, prompt, handler)
 	if err != nil {
 		a.emitter.Emit("claude:error", err.Error())
 	} else {

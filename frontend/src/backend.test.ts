@@ -57,7 +57,7 @@ describe('backend adapter', () => {
         main: {
           App: {
             SendPrompt: vi.fn(),
-            ContinuePrompt: vi.fn(),
+            SendPromptWithSession: vi.fn(),
             CancelPrompt: vi.fn(),
             ListSessions: vi.fn(),
           },
@@ -74,7 +74,7 @@ describe('backend adapter', () => {
     beforeEach(() => {
       mockApp = {
         SendPrompt: vi.fn().mockResolvedValue(undefined),
-        ContinuePrompt: vi.fn().mockResolvedValue(undefined),
+        SendPromptWithSession: vi.fn().mockResolvedValue(undefined),
         CancelPrompt: vi.fn().mockResolvedValue(undefined),
         ListSessions: vi.fn().mockResolvedValue([]),
       }
@@ -87,10 +87,10 @@ describe('backend adapter', () => {
       expect(mockApp.SendPrompt).toHaveBeenCalledWith('hello')
     })
 
-    it('delegates continuePrompt to window.go.main.App.ContinuePrompt', async () => {
+    it('delegates sendPromptWithSession to window.go.main.App.SendPromptWithSession', async () => {
       const backend = new WailsBackend()
-      await backend.continuePrompt('resume')
-      expect(mockApp.ContinuePrompt).toHaveBeenCalledWith('resume')
+      await backend.sendPromptWithSession('resume', 'session-123')
+      expect(mockApp.SendPromptWithSession).toHaveBeenCalledWith('resume', 'session-123')
     })
 
     it('delegates cancelPrompt to window.go.main.App.CancelPrompt', async () => {
@@ -200,13 +200,13 @@ describe('backend adapter', () => {
       vi.useRealTimers()
     })
 
-    it('continuePrompt emits BridgeEvents via registered callback', async () => {
+    it('sendPromptWithSession emits BridgeEvents via registered callback', async () => {
       vi.useFakeTimers()
       const { MockBackend } = await import('./backend.mock')
       const backend = new MockBackend()
       const cb = vi.fn()
       backend.onEvent(cb)
-      backend.continuePrompt('continue text')
+      backend.sendPromptWithSession('continue text', 'session-123')
 
       await vi.runAllTimersAsync()
 

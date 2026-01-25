@@ -12,7 +12,7 @@ const mockUnsubscribe = vi.fn()
 
 const mockBackend = {
   sendPrompt: vi.fn().mockResolvedValue(undefined),
-  continuePrompt: vi.fn().mockResolvedValue(undefined),
+  sendPromptWithSession: vi.fn().mockResolvedValue(undefined),
   cancelPrompt: vi.fn().mockResolvedValue(undefined),
   listSessions: vi.fn().mockResolvedValue([]),
   onEvent: vi.fn((cb: EventCallback) => {
@@ -163,11 +163,13 @@ describe('App', () => {
     })
   })
 
-  describe('send handler', () => {
-    it('calls backend.sendPrompt with text when send is triggered', () => {
+  describe('send handler (new session)', () => {
+    it('calls backend.sendPrompt with text when 2x Enter triggers new session', () => {
       const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test prompt' } })
+      // 2x Enter = new session
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       act(() => {
         vi.advanceTimersByTime(2000)
@@ -176,10 +178,28 @@ describe('App', () => {
       expect(mockBackend.sendPrompt).toHaveBeenCalledWith('test prompt')
     })
 
+    it('clears sessionId when starting new session', () => {
+      state.sessionId.value = 'existing-session'
+      const { getByLabelText } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      // 2x Enter = new session
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(state.sessionId.value).toBeNull()
+      expect(mockBackend.sendPrompt).toHaveBeenCalled()
+    })
+
     it('sets loading=true when send is triggered', () => {
       const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
+      // 2x Enter = new session
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       act(() => {
         vi.advanceTimersByTime(2000)
@@ -193,6 +213,8 @@ describe('App', () => {
       const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
+      // 2x Enter = new session
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       act(() => {
         vi.advanceTimersByTime(2000)
@@ -202,26 +224,42 @@ describe('App', () => {
     })
   })
 
-  describe('continue handler', () => {
-    it('calls backend.continuePrompt with text when continue is triggered', () => {
+  describe('continue handler (continue session)', () => {
+    it('calls backend.sendPromptWithSession when session exists', () => {
+      state.sessionId.value = 'existing-session-id'
       const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
-      fireEvent.input(textarea, { target: { value: 'resume work' } })
-      // First Enter triggers pending, second Enter toggles to continue mode
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      fireEvent.input(textarea, { target: { value: 'continue work' } })
+      // 1x Enter = continue session
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       act(() => {
         vi.advanceTimersByTime(2000)
       })
 
-      expect(mockBackend.continuePrompt).toHaveBeenCalledWith('resume work')
+      expect(mockBackend.sendPromptWithSession).toHaveBeenCalledWith('continue work', 'existing-session-id')
+    })
+
+    it('calls backend.sendPrompt when no session exists (first message)', () => {
+      state.sessionId.value = null
+      const { getByLabelText } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'first message' } })
+      // 1x Enter = continue session (but no session, so starts new)
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(mockBackend.sendPrompt).toHaveBeenCalledWith('first message')
+      expect(mockBackend.sendPromptWithSession).not.toHaveBeenCalled()
     })
 
     it('sets loading=true when continue is triggered', () => {
+      state.sessionId.value = 'test-session'
       const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      // 1x Enter = continue session
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       act(() => {
         vi.advanceTimersByTime(2000)
@@ -232,10 +270,11 @@ describe('App', () => {
 
     it('clears error when continue is triggered', () => {
       state.setError('previous error')
+      state.sessionId.value = 'test-session'
       const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      // 1x Enter = continue session
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       act(() => {
         vi.advanceTimersByTime(2000)

@@ -61,12 +61,13 @@ describe('ChatInput', () => {
       expect(indicator.className).toContain('absolute')
     })
 
-    it('indicator is vertically centered using inset-y-0 and flex', () => {
+    it('indicator is vertically centered using top-1/2 and -translate-y-1/2', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
       const indicator = getByTestId('indicator')
-      expect(indicator.className).toContain('inset-y-0')
+      expect(indicator.className).toContain('top-1/2')
+      expect(indicator.className).toContain('-translate-y-1/2')
       expect(indicator.className).toContain('flex')
       expect(indicator.className).toContain('items-center')
       expect(indicator.className).toContain('justify-center')
@@ -78,12 +79,13 @@ describe('ChatInput', () => {
       expect(textarea.style.paddingRight).toBe('3rem')
     })
 
-    it('indicator button is 32px wide', () => {
+    it('indicator button is 32px wide and 36px tall', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
       const indicator = getByTestId('indicator')
       expect(indicator.className).toContain('w-8')
+      expect(indicator.className).toContain('h-[36px]')
     })
   })
 
@@ -161,7 +163,7 @@ describe('ChatInput', () => {
   })
 
   describe('session toggle', () => {
-    it('first Enter shows \u25b8 indicator (odd count)', () => {
+    it('first Enter shows \u25b8 indicator (odd count = continue session)', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
@@ -169,7 +171,7 @@ describe('ChatInput', () => {
       expect(getByTestId('indicator').textContent).toBe('\u25b8')
     })
 
-    it('second Enter shows \u25b8\u25b8 indicator (even count)', () => {
+    it('second Enter shows \u25b8\u25b8 indicator (even count = new session)', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
@@ -178,7 +180,7 @@ describe('ChatInput', () => {
       expect(getByTestId('indicator').textContent).toBe('\u25b8\u25b8')
     })
 
-    it('third Enter shows \u25b8 indicator again (odd count)', () => {
+    it('third Enter shows \u25b8 indicator again (odd count = continue session)', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
@@ -188,7 +190,7 @@ describe('ChatInput', () => {
       expect(getByTestId('indicator').textContent).toBe('\u25b8')
     })
 
-    it('even Enter count shows red \u25b8\u25b8 indicator', () => {
+    it('even Enter count shows red \u25b8\u25b8 indicator (new session warning)', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test' } })
@@ -237,29 +239,29 @@ describe('ChatInput', () => {
   })
 
   describe('auto-send after timeout', () => {
-    it('calls onSend after 2 seconds with odd enter count', () => {
+    it('calls onContinue after 2 seconds with odd enter count (continue session)', () => {
       const { getByLabelText, props } = setup()
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test message' } })
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
-      expect(props.onSend).not.toHaveBeenCalled()
-      act(() => {
-        vi.advanceTimersByTime(2000)
-      })
-      expect(props.onSend).toHaveBeenCalledWith('test message')
-    })
-
-    it('calls onContinue after 2 seconds with even enter count', () => {
-      const { getByLabelText, props } = setup()
-      const textarea = getByLabelText('Enter your prompt...')
-      fireEvent.input(textarea, { target: { value: 'test message' } })
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
       expect(props.onContinue).not.toHaveBeenCalled()
       act(() => {
         vi.advanceTimersByTime(2000)
       })
       expect(props.onContinue).toHaveBeenCalledWith('test message')
+    })
+
+    it('calls onSend after 2 seconds with even enter count (new session)', () => {
+      const { getByLabelText, props } = setup()
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test message' } })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      expect(props.onSend).not.toHaveBeenCalled()
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(props.onSend).toHaveBeenCalledWith('test message')
     })
 
     it('does not send if cancelled before timeout', () => {
@@ -294,7 +296,8 @@ describe('ChatInput', () => {
       act(() => {
         vi.advanceTimersByTime(500)
       })
-      expect(props.onContinue).toHaveBeenCalledWith('test')
+      // After 2x Enter (even count), should call onSend (new session)
+      expect(props.onSend).toHaveBeenCalledWith('test')
     })
 
     it('clears input after auto-send', () => {
