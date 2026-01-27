@@ -1,6 +1,38 @@
 # Developer Setup
 
-Instructions for developers working on this marketplace.
+Instructions for developers working on this project.
+
+## Running the Project
+
+```bash
+# Install dependencies
+npm install
+cd frontend && npm install && cd ..
+
+# Start development server (Go + Vite)
+wails dev
+```
+
+## Development Modes
+
+The frontend automatically detects which backend to use:
+
+| URL | Backend | Use Case |
+|-----|---------|----------|
+| `http://localhost:5173` | MockBackend | Pure frontend development |
+| `http://localhost:34115` | Go Backend | Full integration testing |
+| Native Wails window | Go Backend | Production-like environment |
+
+### Why MockBackend?
+
+The mock exists for faster frontend iteration:
+
+- **Faster HMR** - Vite hot-reload without Go recompilation
+- **No API key needed** - UI work without Claude credentials
+- **Isolated tests** - Frontend tests run without Go environment
+- **CI-friendly** - Frontend pipeline needs no Go setup
+
+For integration testing or real Claude interaction, use port 34115 or the native window.
 
 ## Activate Git Hooks
 
