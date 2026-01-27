@@ -445,6 +445,20 @@ describe('ChatInput', () => {
       expect(props.onSend).not.toHaveBeenCalled()
     })
 
+    it('Escape during loading calls onCancel when stoppable', () => {
+      const { getByLabelText, props } = setup({ loading: true, stoppable: true })
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.keyDown(textarea, { key: 'Escape' })
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('Escape during loading does nothing when not stoppable', () => {
+      const { getByLabelText, props } = setup({ loading: true, stoppable: false })
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.keyDown(textarea, { key: 'Escape' })
+      expect(props.onCancel).not.toHaveBeenCalled()
+    })
+
     it('ArrowUp outside pending state does nothing', () => {
       const { getByLabelText, getByTestId } = setup()
       const textarea = getByLabelText('Enter your prompt...')

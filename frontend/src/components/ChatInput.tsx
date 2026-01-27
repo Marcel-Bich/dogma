@@ -15,8 +15,10 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   const [text, setText] = useState('')
   const [state, setState] = useState<InputState>('idle')
   const [enterCount, setEnterCount] = useState(0)
+  const [showStop, setShowStop] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const enterCountRef = useRef(0)
 
   const trimmed = text.trim()
@@ -28,16 +30,31 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
     if (loading) {
       setState('loading')
       cancelPending()
-    } else if (state === 'loading') {
-      setState(hasText ? 'ready' : 'idle')
+      setShowStop(false)
+      // Show stop button after 1s delay
+      stopTimerRef.current = setTimeout(() => {
+        setShowStop(true)
+      }, 1000)
+    } else {
+      if (state === 'loading') {
+        setState(hasText ? 'ready' : 'idle')
+      }
+      setShowStop(false)
+      if (stopTimerRef.current) {
+        clearTimeout(stopTimerRef.current)
+        stopTimerRef.current = null
+      }
     }
   }, [loading])
 
-  // Cleanup timer on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
+      }
+      if (stopTimerRef.current) {
+        clearTimeout(stopTimerRef.current)
       }
     }
   }, [])
@@ -104,6 +121,11 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   }
 
   function handleKeyDown(e: KeyboardEvent) {
+    if (loading && stoppable && e.key === 'Escape') {
+      onCancel()
+      return
+    }
+
     if (loading) return
 
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -123,6 +145,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   }
 
   function handleIndicatorClick() {
+    // During loading, clicking always cancels (even on dots before stop shows)
     if (loading && stoppable) {
       onCancel()
       return
@@ -166,11 +189,11 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   }
 
   function renderIndicatorContent() {
-    // Loading + stoppable: CSS square (stop button)
-    if (loading && stoppable) {
+    // Loading + showStop (after 1s): CSS square (stop button)
+    if (loading && showStop) {
       return <span class="stop-square w-3 h-3 bg-current inline-block" />
     }
-    // Loading (not stoppable): animated dots
+    // Loading (first 1s): animated dots (still clickable for cancel)
     if (loading) {
       return (
         <span class="loading-dots flex gap-0.5">
@@ -187,6 +210,10 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   }
 
   function getIndicatorColor(): string {
+    // Stop button is red
+    if (loading && showStop) {
+      return 'var(--arctic-error)'
+    }
     if (state === 'pending' && enterCount % 2 === 0) {
       return 'var(--arctic-error)'
     }
@@ -194,7 +221,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   }
 
   function isIndicatorDim(): boolean {
-    if (loading && stoppable) return false
+    if (loading && showStop) return false
     if (loading) return true
     return state !== 'pending'
   }
@@ -251,7 +278,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
             onClick={handleIndicatorClick}
             class={`absolute right-1 top-0 bottom-0 flex items-center justify-center w-8 h-full text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
             style={{ color: getIndicatorColor() }}
-            aria-label={loading && stoppable ? 'Stop' : 'Send'}
+            aria-label={loading && showStop ? 'Stop' : loading ? 'Cancel' : 'Send'}
           >
             {renderIndicatorContent()}
           </button>
