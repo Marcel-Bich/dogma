@@ -28,6 +28,14 @@ export const backgroundColor = signal('#000000')
 let currentMessage: ChatMessage | null = null
 let finalized = false
 
+export function formatErrorMessage(rawError: string): string {
+  if (rawError === '') return ''
+  if (rawError === 'claude exited: exit status 143') return 'Interrupted'
+  if (rawError === 'claude exited: signal: terminated') return 'Interrupted'
+  if (rawError === 'claude exited: exit status 1') return 'Process error'
+  return rawError
+}
+
 export function addMessage(msg: ChatMessage): void {
   messages.value = [...messages.value, msg]
 }
@@ -35,12 +43,16 @@ export function addMessage(msg: ChatMessage): void {
 export function handleBridgeEvent(event: BridgeEvent): void {
   switch (event.type) {
     case 'system':
+      console.log('[STATE] system event - session_id:', event.session_id, 'model:', event.model)
       if (event.session_id) {
         sessionId.value = event.session_id
       }
       break
 
     case 'assistant': {
+      const blockType = event.thinking ? 'thinking' : event.tool_name ? 'tool_use' : event.text ? 'text' : 'unknown'
+      console.log('[STATE] assistant event - blockType:', blockType, event.tool_name ? `tool: ${event.tool_name}` : '', event.text ? `text: ${event.text.substring(0, 50)}...` : '')
+
       if (!currentMessage || finalized) {
         currentMessage = {
           id: generateId(),
@@ -49,11 +61,13 @@ export function handleBridgeEvent(event: BridgeEvent): void {
           timestamp: Date.now(),
         }
         finalized = false
+        console.log('[STATE] Created new assistant message:', currentMessage.id)
       }
 
       const block = buildBlock(event)
       if (block) {
         currentMessage.blocks = [...currentMessage.blocks, block]
+        console.log('[STATE] Added block:', block.type, 'total blocks:', currentMessage.blocks.length)
       }
 
       // Update messages array reactively
@@ -69,28 +83,20 @@ export function handleBridgeEvent(event: BridgeEvent): void {
     }
 
     case 'result': {
+      console.log('[STATE] result event - is_error:', event.is_error, 'result:', event.result?.substring(0, 100))
       if (event.is_error) {
-        const block: MessageBlock = { type: 'error', content: event.result || '' }
+        const formattedError = formatErrorMessage(event.result || '')
+        const block: MessageBlock = { type: 'error', content: formattedError }
 
-        if (!currentMessage || finalized) {
-          currentMessage = {
-            id: generateId(),
-            role: 'assistant',
-            blocks: [],
-            timestamp: Date.now(),
-          }
-          finalized = false
-          currentMessage.blocks = [block]
-          messages.value = [...messages.value, { ...currentMessage }]
-        } else {
-          currentMessage.blocks = [...currentMessage.blocks, block]
-          const existing = messages.value.findIndex((m) => m.id === currentMessage!.id)
-          if (existing >= 0) {
-            const updated = [...messages.value]
-            updated[existing] = { ...currentMessage }
-            messages.value = updated
-          }
+        // ALWAYS create a new message for errors to guarantee chronological order
+        // This prevents race conditions where error appears before user prompt
+        const errorMessage: ChatMessage = {
+          id: generateId(),
+          role: 'assistant',
+          blocks: [block],
+          timestamp: Date.now(),
         }
+        messages.value = [...messages.value, errorMessage]
       }
       finalized = true
       break

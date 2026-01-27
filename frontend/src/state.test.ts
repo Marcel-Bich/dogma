@@ -29,6 +29,7 @@ import {
   setBackgroundColor,
   resetState,
   loadSessions,
+  formatErrorMessage,
 } from './state'
 import type { BridgeEvent, ChatMessage, SessionInfo } from './types'
 
@@ -144,7 +145,7 @@ describe('state', () => {
       })
     })
 
-    it('with type="result" + is_error=true creates ErrorBlock', () => {
+    it('with type="result" + is_error=true creates ErrorBlock in new message', () => {
       const assistantEvent: BridgeEvent = { type: 'assistant', text: 'trying...' }
       handleBridgeEvent(assistantEvent)
 
@@ -154,9 +155,13 @@ describe('state', () => {
         is_error: true,
       }
       handleBridgeEvent(errorEvent)
-      expect(messages.value).toHaveLength(1)
-      const blocks = messages.value[0].blocks
-      expect(blocks[blocks.length - 1]).toEqual({
+      // Error always creates a NEW message for chronological ordering
+      expect(messages.value).toHaveLength(2)
+      expect(messages.value[0].blocks[0]).toEqual({
+        type: 'text',
+        content: 'trying...',
+      })
+      expect(messages.value[1].blocks[0]).toEqual({
         type: 'error',
         content: 'something failed',
       })
@@ -253,6 +258,70 @@ describe('state', () => {
       expect(messages.value[0].blocks[0]).toEqual({
         type: 'error',
         content: '',
+      })
+    })
+
+    it('error result always creates new message at end for chronological order', () => {
+      // Simulate: user message exists, then error comes in
+      const userMsg: ChatMessage = {
+        id: 'user-msg-1',
+        role: 'user',
+        blocks: [{ type: 'text', content: 'user prompt' }],
+        timestamp: Date.now(),
+      }
+      addMessage(userMsg)
+
+      // Error event should create a NEW message at the end
+      const errorEvent: BridgeEvent = {
+        type: 'result',
+        result: 'claude exited: exit status 143',
+        is_error: true,
+      }
+      handleBridgeEvent(errorEvent)
+
+      // Should have 2 messages: user first, then error
+      expect(messages.value).toHaveLength(2)
+      expect(messages.value[0].role).toBe('user')
+      expect(messages.value[1].role).toBe('assistant')
+      expect(messages.value[1].blocks[0].type).toBe('error')
+    })
+
+    it('error result formats the message using formatErrorMessage', () => {
+      const errorEvent: BridgeEvent = {
+        type: 'result',
+        result: 'claude exited: exit status 143',
+        is_error: true,
+      }
+      handleBridgeEvent(errorEvent)
+
+      expect(messages.value[0].blocks[0]).toEqual({
+        type: 'error',
+        content: 'Interrupted',
+      })
+    })
+
+    it('error during active assistant message still creates new message', () => {
+      // Start an assistant message
+      handleBridgeEvent({ type: 'assistant', text: 'Starting...' })
+      expect(messages.value).toHaveLength(1)
+      const firstMsgId = messages.value[0].id
+
+      // Error comes in - should create NEW message, not append to existing
+      const errorEvent: BridgeEvent = {
+        type: 'result',
+        result: 'claude exited: signal: terminated',
+        is_error: true,
+      }
+      handleBridgeEvent(errorEvent)
+
+      // Should have 2 messages now
+      expect(messages.value).toHaveLength(2)
+      expect(messages.value[0].id).toBe(firstMsgId)
+      expect(messages.value[0].blocks).toHaveLength(1)
+      expect(messages.value[0].blocks[0].type).toBe('text')
+      expect(messages.value[1].blocks[0]).toEqual({
+        type: 'error',
+        content: 'Interrupted',
       })
     })
 
@@ -497,6 +566,32 @@ describe('state', () => {
     it('setBackgroundColor can be set to any hex color', () => {
       setBackgroundColor('#ffffff')
       expect(backgroundColor.value).toBe('#ffffff')
+    })
+  })
+
+  describe('formatErrorMessage', () => {
+    it('converts exit status 143 to Interrupted', () => {
+      expect(formatErrorMessage('claude exited: exit status 143')).toBe('Interrupted')
+    })
+
+    it('converts signal terminated to Interrupted', () => {
+      expect(formatErrorMessage('claude exited: signal: terminated')).toBe('Interrupted')
+    })
+
+    it('converts exit status 1 to Process error', () => {
+      expect(formatErrorMessage('claude exited: exit status 1')).toBe('Process error')
+    })
+
+    it('returns original text for unknown errors', () => {
+      expect(formatErrorMessage('some other error')).toBe('some other error')
+    })
+
+    it('returns empty string for empty input', () => {
+      expect(formatErrorMessage('')).toBe('')
+    })
+
+    it('handles case sensitivity correctly', () => {
+      expect(formatErrorMessage('CLAUDE EXITED: EXIT STATUS 143')).toBe('CLAUDE EXITED: EXIT STATUS 143')
     })
   })
 

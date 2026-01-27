@@ -102,11 +102,11 @@ describe('MessageBlockView', () => {
       expect(getByText('Something failed')).toBeTruthy()
     })
 
-    it('applies red error styling', () => {
+    it('applies error-block class for styling', () => {
       const block: MessageBlock = { type: 'error', content: 'fail' }
       const { container } = render(<MessageBlockView block={block} />)
       const el = container.firstElementChild as HTMLElement
-      expect(el.className).toContain('text-red-400')
+      expect(el.className).toContain('error-block')
     })
   })
 
