@@ -54,14 +54,20 @@ export function App() {
 
   useEffect(() => {
     const unsub = backend.onEvent((event: BridgeEvent) => {
+      // Debug: Log all incoming events
+      console.log('[BRIDGE] Event received:', event.type, event)
+
       if (event.type === 'result' && !event.is_error) {
+        console.log('[BRIDGE] Result (success):', event.result)
         setLoading(false)
         setStoppable(false)
       } else if (event.type === 'result' && event.is_error) {
+        console.error('[BRIDGE] Result (error):', event.result)
         setError(event.result || 'Unknown error')
         setLoading(false)
         setStoppable(false)
       } else {
+        console.log('[BRIDGE] Handling event:', event.type)
         handleBridgeEvent(event)
       }
     })
@@ -71,6 +77,7 @@ export function App() {
 
   function handleSend(text: string) {
     // Start a completely new session
+    console.log('[APP] handleSend - new session, prompt:', text.substring(0, 100) + (text.length > 100 ? '...' : ''))
     sessionId.value = null
     const userMessage: ChatMessage = {
       id: generateId(),
@@ -87,6 +94,7 @@ export function App() {
 
   function handleContinue(text: string) {
     // Continue current session if one exists, otherwise start new
+    console.log('[APP] handleContinue - sessionId:', sessionId.value, ', prompt:', text.substring(0, 100) + (text.length > 100 ? '...' : ''))
     const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -98,13 +106,16 @@ export function App() {
     setStoppable(true)
     setError(null)
     if (sessionId.value) {
+      console.log('[APP] Continuing existing session:', sessionId.value)
       backend.sendPromptWithSession(text, sessionId.value)
     } else {
+      console.log('[APP] No existing session, starting new')
       backend.sendPrompt(text)
     }
   }
 
   function handleCancel() {
+    console.log('[APP] handleCancel - stopping current prompt')
     backend.cancelPrompt()
   }
 
@@ -172,7 +183,7 @@ export function App() {
         </div>
         <div data-testid="main-content" class="flex flex-col flex-1" onClick={() => { if (showSessions) setShowSessions(false) }}>
           <div class="flex-1 overflow-y-auto">
-            <MessageList messages={messages.value} loading={loading.value} />
+            <MessageList messages={messages.value} loading={loading.value} stoppable={stoppable.value} />
           </div>
           {error.value && (
             <div data-testid="error-message" class="px-4 py-2 text-sm" style={{ background: 'rgba(127,29,29,0.3)', color: 'var(--arctic-error)' }}>

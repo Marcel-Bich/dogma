@@ -473,3 +473,150 @@ func (m *blockingMockCmd) Wait() error {
 	<-m.waitCh
 	return m.mockCmd.Wait()
 }
+
+func TestBuildArgs_DefaultValues(t *testing.T) {
+	// Save and restore original values
+	origModel := DefaultModel
+	origSkip := DangerouslySkipPermissions
+	defer func() {
+		DefaultModel = origModel
+		DangerouslySkipPermissions = origSkip
+	}()
+
+	DefaultModel = ""
+	DangerouslySkipPermissions = false
+
+	args := buildArgs("hello", "")
+	expected := []string{"-p", "--output-format", "stream-json", "--verbose", "hello"}
+
+	if len(args) != len(expected) {
+		t.Fatalf("expected %d args, got %d: %v", len(expected), len(args), args)
+	}
+	for i, arg := range expected {
+		if args[i] != arg {
+			t.Errorf("args[%d] = %q, want %q", i, args[i], arg)
+		}
+	}
+}
+
+func TestBuildArgs_WithModel(t *testing.T) {
+	origModel := DefaultModel
+	origSkip := DangerouslySkipPermissions
+	defer func() {
+		DefaultModel = origModel
+		DangerouslySkipPermissions = origSkip
+	}()
+
+	DefaultModel = "haiku"
+	DangerouslySkipPermissions = false
+
+	args := buildArgs("hello", "")
+
+	// Check that --model haiku is present
+	hasModel := false
+	for i, arg := range args {
+		if arg == "--model" && i+1 < len(args) && args[i+1] == "haiku" {
+			hasModel = true
+			break
+		}
+	}
+	if !hasModel {
+		t.Errorf("expected --model haiku in args: %v", args)
+	}
+}
+
+func TestBuildArgs_WithDangerouslySkipPermissions(t *testing.T) {
+	origModel := DefaultModel
+	origSkip := DangerouslySkipPermissions
+	defer func() {
+		DefaultModel = origModel
+		DangerouslySkipPermissions = origSkip
+	}()
+
+	DefaultModel = ""
+	DangerouslySkipPermissions = true
+
+	args := buildArgs("hello", "")
+
+	// Check that --dangerously-skip-permissions is present
+	hasFlag := false
+	for _, arg := range args {
+		if arg == "--dangerously-skip-permissions" {
+			hasFlag = true
+			break
+		}
+	}
+	if !hasFlag {
+		t.Errorf("expected --dangerously-skip-permissions in args: %v", args)
+	}
+}
+
+func TestBuildArgs_WithSessionID(t *testing.T) {
+	origModel := DefaultModel
+	origSkip := DangerouslySkipPermissions
+	defer func() {
+		DefaultModel = origModel
+		DangerouslySkipPermissions = origSkip
+	}()
+
+	DefaultModel = ""
+	DangerouslySkipPermissions = false
+
+	args := buildArgs("hello", "sess-123")
+
+	// Check that --resume sess-123 is present
+	hasSession := false
+	for i, arg := range args {
+		if arg == "--resume" && i+1 < len(args) && args[i+1] == "sess-123" {
+			hasSession = true
+			break
+		}
+	}
+	if !hasSession {
+		t.Errorf("expected --resume sess-123 in args: %v", args)
+	}
+}
+
+func TestBuildArgs_AllOptions(t *testing.T) {
+	origModel := DefaultModel
+	origSkip := DangerouslySkipPermissions
+	defer func() {
+		DefaultModel = origModel
+		DangerouslySkipPermissions = origSkip
+	}()
+
+	DefaultModel = "opus"
+	DangerouslySkipPermissions = true
+
+	args := buildArgs("test prompt", "sess-456")
+
+	// Verify all expected flags are present
+	checks := map[string]bool{
+		"--model":                        false,
+		"--dangerously-skip-permissions": false,
+		"--resume":                       false,
+	}
+
+	for i, arg := range args {
+		if arg == "--model" && i+1 < len(args) && args[i+1] == "opus" {
+			checks["--model"] = true
+		}
+		if arg == "--dangerously-skip-permissions" {
+			checks["--dangerously-skip-permissions"] = true
+		}
+		if arg == "--resume" && i+1 < len(args) && args[i+1] == "sess-456" {
+			checks["--resume"] = true
+		}
+	}
+
+	for flag, found := range checks {
+		if !found {
+			t.Errorf("expected %s in args: %v", flag, args)
+		}
+	}
+
+	// Last arg should be the prompt
+	if args[len(args)-1] != "test prompt" {
+		t.Errorf("expected last arg to be prompt, got %q", args[len(args)-1])
+	}
+}
