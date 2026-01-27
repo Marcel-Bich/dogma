@@ -337,6 +337,29 @@ describe('ChatInput', () => {
       })
       expect(focusSpy).toHaveBeenCalled()
     })
+
+    it('textarea regains focus after ESC cancels pending state', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      fireEvent.input(textarea, { target: { value: 'test message' } })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      // Now in pending state
+      const focusSpy = vi.spyOn(textarea, 'focus')
+      fireEvent.keyDown(textarea, { key: 'Escape' })
+      expect(focusSpy).toHaveBeenCalled()
+    })
+
+    it('textarea regains focus after loading ends', () => {
+      const { getByLabelText, rerender, props } = setup({ loading: true })
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      const focusSpy = vi.spyOn(textarea, 'focus')
+      // Rerender with loading=false (simulates cancel or completion)
+      rerender(<ChatInput {...props} loading={false} />)
+      act(() => {
+        vi.advanceTimersByTime(0) // Process setTimeout(..., 0)
+      })
+      expect(focusSpy).toHaveBeenCalled()
+    })
   })
 
   describe('loading states', () => {
