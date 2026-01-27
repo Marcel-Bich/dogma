@@ -52,6 +52,7 @@ body {
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px; /* Horizontal scrollbar height */
 }
 
 ::-webkit-scrollbar-track {
@@ -421,12 +422,16 @@ body {
   color: var(--arctic-dim);
 }
 
-/* GFM Tables */
+/* GFM Tables - Horizontal scroll for wide tables within message */
 .markdown-content table {
-  width: 100%;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* Smooth touch scrolling on iOS */
   border-collapse: collapse;
   margin: 0.75em 0;
   font-size: 0.9em;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .markdown-content th,
@@ -434,6 +439,7 @@ body {
   border: 1px solid var(--arctic-border);
   padding: 8px 12px;
   text-align: left;
+  white-space: nowrap; /* Prevent cell content from wrapping */
 }
 
 .markdown-content th {

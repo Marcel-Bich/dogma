@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'preact/hooks'
 import { MessageBlockView, parseMarkdown } from './MessageBlock'
 import { ContextMenu, ContextMenuItem } from './ContextMenu'
+import { markdownToPlainText } from '../utils/markdownToPlainText'
 import type { ChatMessage, MessageBlock } from '../types'
 
 interface Props {
@@ -68,66 +69,26 @@ export function MessageList({ messages, loading, stoppable = false }: Props) {
     await navigator.clipboard.writeText(text)
   }, [])
 
-  // Extract text from element with proper line breaks
-  const extractTextWithLineBreaks = useCallback((element: HTMLElement): string => {
-    const lines: string[] = []
-
-    function processNode(node: Node) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent || ''
-        if (text.trim()) {
-          lines.push(text)
-        }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node as HTMLElement
-        const tagName = el.tagName.toLowerCase()
-
-        // Block elements that should add line breaks
-        const blockTags = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'tr', 'pre', 'blockquote']
-        const isBlock = blockTags.includes(tagName)
-
-        // Process children
-        for (const child of Array.from(node.childNodes)) {
-          processNode(child)
-        }
-
-        // Add line break after block elements
-        if (isBlock && lines.length > 0 && lines[lines.length - 1] !== '') {
-          lines.push('')
-        }
-
-        // Handle <br> tags
-        if (tagName === 'br') {
-          lines.push('')
-        }
-      }
-    }
-
-    processNode(element)
-
-    // Clean up: remove excessive empty lines, trim
-    return lines
-      .join('\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim()
-  }, [])
-
   const getContextMenuItems = useCallback((): ContextMenuItem[] => {
     const items: ContextMenuItem[] = []
-    const { targetType, message, block, element } = contextMenu
+    const { targetType, message, block } = contextMenu
 
     if (targetType === 'block' && block) {
       // Block-level options
       items.push({
         label: 'Copy text',
         action: () => {
-          if (element) {
-            copyToClipboard(extractTextWithLineBreaks(element))
+          if (block.type === 'text') {
+            copyToClipboard(markdownToPlainText(block.content))
           }
         },
       })
 
       if (block.type === 'text') {
+        items.push({
+          label: 'Copy text without HTML',
+          action: () => copyToClipboard(markdownToPlainText(block.content, { stripHtml: true })),
+        })
         items.push({
           label: 'Copy markdown',
           action: () => copyToClipboard(block.content),
@@ -149,14 +110,21 @@ export function MessageList({ messages, loading, stoppable = false }: Props) {
       items.push({
         label: 'Copy text',
         action: () => {
-          if (element) {
-            copyToClipboard(extractTextWithLineBreaks(element))
-          }
+          const textBlocks = message.blocks.filter((b) => b.type === 'text')
+          const allText = textBlocks.map((b) => markdownToPlainText(b.content)).join('\n\n')
+          copyToClipboard(allText)
         },
       })
 
       const textBlocks = message.blocks.filter((b) => b.type === 'text')
       if (textBlocks.length > 0) {
+        items.push({
+          label: 'Copy text without HTML',
+          action: () => {
+            const allText = textBlocks.map((b) => markdownToPlainText(b.content, { stripHtml: true })).join('\n\n')
+            copyToClipboard(allText)
+          },
+        })
         const allMarkdown = textBlocks.map((b) => b.content).join('\n\n')
         items.push({
           label: 'Copy markdown',
