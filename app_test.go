@@ -87,7 +87,7 @@ func TestStreamPrompt_NewSession_Success(t *testing.T) {
 		emitter: emitter,
 	}
 
-	app.streamPrompt("hello", "")
+	app.streamPrompt("hello", "", "")
 
 	events := emitter.getEvents()
 	if len(events) != 2 {
@@ -133,7 +133,7 @@ func TestStreamPrompt_WithSession_Success(t *testing.T) {
 		emitter: emitter,
 	}
 
-	app.streamPrompt("continue", "sess-42")
+	app.streamPrompt("continue", "sess-42", "")
 
 	events := emitter.getEvents()
 	if len(events) != 1 {
@@ -158,7 +158,7 @@ func TestStreamPrompt_NewSession_Error(t *testing.T) {
 		emitter: emitter,
 	}
 
-	app.streamPrompt("hello", "")
+	app.streamPrompt("hello", "", "")
 
 	events := emitter.getEvents()
 	if len(events) != 1 {
@@ -186,7 +186,7 @@ func TestStreamPrompt_WithSession_Error(t *testing.T) {
 		emitter: emitter,
 	}
 
-	app.streamPrompt("test", "sess-99")
+	app.streamPrompt("test", "sess-99", "")
 
 	events := emitter.getEvents()
 	if len(events) != 1 {
@@ -216,7 +216,7 @@ func TestStreamPrompt_Handler_ParseError(t *testing.T) {
 		emitter: emitter,
 	}
 
-	app.streamPrompt("hello", "")
+	app.streamPrompt("hello", "", "")
 
 	events := emitter.getEvents()
 	// Only claude:done should be emitted (parse error is silently skipped)
@@ -244,7 +244,7 @@ func TestStreamPrompt_Handler_EmptyType(t *testing.T) {
 		emitter: emitter,
 	}
 
-	app.streamPrompt("hello", "")
+	app.streamPrompt("hello", "", "")
 
 	events := emitter.getEvents()
 	// Only claude:done should be emitted (empty type is skipped)
@@ -285,7 +285,7 @@ func TestStreamPrompt_Handler_MultipleEvents(t *testing.T) {
 		emitter: emitter,
 	}
 
-	app.streamPrompt("multi", "")
+	app.streamPrompt("multi", "", "")
 
 	events := emitter.getEvents()
 	// 3 claude:event + 1 claude:done
@@ -625,5 +625,109 @@ func TestListSessions_GetwdError(t *testing.T) {
 	}
 	if result != nil {
 		t.Errorf("expected nil result, got %v", result)
+	}
+}
+
+// --- Request ID tests ---
+
+func TestStreamPrompt_AddsRequestIDToAllEvents(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendPromptFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
+			handler(claude.StreamEvent{Payload: []byte(`{"type":"system","session_id":"s1"}`)})
+			handler(claude.StreamEvent{Payload: []byte(`{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}`)})
+			return nil
+		},
+	}
+
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
+
+	app.streamPrompt("hello", "", "req-123")
+
+	events := emitter.getEvents()
+	if len(events) != 3 {
+		t.Fatalf("expected 3 events, got %d: %+v", len(events), events)
+	}
+
+	// Check that all claude:event events have the request ID
+	for i, ev := range events {
+		if ev.name == "claude:event" {
+			bridge, ok := ev.data[0].(claude.BridgeEvent)
+			if !ok {
+				t.Fatalf("event[%d]: expected BridgeEvent, got %T", i, ev.data[0])
+			}
+			if bridge.RequestID != "req-123" {
+				t.Errorf("event[%d]: expected RequestID 'req-123', got %q", i, bridge.RequestID)
+			}
+		}
+	}
+}
+
+func TestSendPromptWithRequestId_LaunchesGoroutine(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendPromptFn: func(ctx context.Context, prompt string, handler claude.EventHandler) error {
+			if prompt != "test" {
+				t.Errorf("expected prompt 'test', got %q", prompt)
+			}
+			return nil
+		},
+	}
+
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
+
+	app.SendPromptWithRequestId("test", "req-456")
+
+	// Wait for goroutine to complete
+	time.Sleep(50 * time.Millisecond)
+
+	events := emitter.getEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].name != "claude:done" {
+		t.Errorf("expected 'claude:done', got %q", events[0].name)
+	}
+}
+
+func TestSendPromptWithSessionAndRequestId_LaunchesGoroutine(t *testing.T) {
+	emitter := &mockEmitter{}
+	spawner := &mockSpawner{
+		sendWithSessFn: func(ctx context.Context, prompt string, sessionID string, handler claude.EventHandler) error {
+			if prompt != "continue" {
+				t.Errorf("expected prompt 'continue', got %q", prompt)
+			}
+			if sessionID != "sess-abc" {
+				t.Errorf("expected sessionID 'sess-abc', got %q", sessionID)
+			}
+			return nil
+		},
+	}
+
+	app := &App{
+		ctx:     context.Background(),
+		spawner: spawner,
+		emitter: emitter,
+	}
+
+	app.SendPromptWithSessionAndRequestId("continue", "sess-abc", "req-789")
+
+	// Wait for goroutine to complete
+	time.Sleep(50 * time.Millisecond)
+
+	events := emitter.getEvents()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].name != "claude:done" {
+		t.Errorf("expected 'claude:done', got %q", events[0].name)
 	}
 }

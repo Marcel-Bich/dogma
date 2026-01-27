@@ -2,6 +2,7 @@
 export interface BridgeEvent {
   type: string
   session_id?: string
+  request_id?: string
   text?: string
   thinking?: string
   tool_name?: string

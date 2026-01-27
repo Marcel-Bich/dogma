@@ -13,6 +13,8 @@ const mockUnsubscribe = vi.fn()
 const mockBackend = {
   sendPrompt: vi.fn().mockResolvedValue(undefined),
   sendPromptWithSession: vi.fn().mockResolvedValue(undefined),
+  sendPromptWithRequestId: vi.fn().mockResolvedValue(undefined),
+  sendPromptWithSessionAndRequestId: vi.fn().mockResolvedValue(undefined),
   cancelPrompt: vi.fn().mockResolvedValue(undefined),
   listSessions: vi.fn().mockResolvedValue([]),
   onEvent: vi.fn((cb: EventCallback) => {
@@ -186,7 +188,7 @@ describe('App', () => {
   })
 
   describe('send handler (new session)', () => {
-    it('calls backend.sendPrompt with text when 2x Enter triggers new session', () => {
+    it('calls backend.sendPromptWithRequestId with text when 2x Enter triggers new session', () => {
       const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.input(textarea, { target: { value: 'test prompt' } })
@@ -197,7 +199,7 @@ describe('App', () => {
         vi.advanceTimersByTime(2000)
       })
 
-      expect(mockBackend.sendPrompt).toHaveBeenCalledWith('test prompt')
+      expect(mockBackend.sendPromptWithRequestId).toHaveBeenCalledWith('test prompt', expect.any(String))
     })
 
     it('adds user message to messages list before calling backend', () => {
@@ -246,7 +248,7 @@ describe('App', () => {
       })
 
       expect(state.sessionId.value).toBeNull()
-      expect(mockBackend.sendPrompt).toHaveBeenCalled()
+      expect(mockBackend.sendPromptWithRequestId).toHaveBeenCalled()
     })
 
     it('sets loading=true when send is triggered', () => {
@@ -280,7 +282,7 @@ describe('App', () => {
   })
 
   describe('continue handler (continue session)', () => {
-    it('calls backend.sendPromptWithSession when session exists', () => {
+    it('calls backend.sendPromptWithSessionAndRequestId when session exists', () => {
       state.sessionId.value = 'existing-session-id'
       const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
@@ -291,7 +293,7 @@ describe('App', () => {
         vi.advanceTimersByTime(2000)
       })
 
-      expect(mockBackend.sendPromptWithSession).toHaveBeenCalledWith('continue work', 'existing-session-id')
+      expect(mockBackend.sendPromptWithSessionAndRequestId).toHaveBeenCalledWith('continue work', 'existing-session-id', expect.any(String))
     })
 
     it('adds user message to messages list before calling backend', () => {
@@ -327,7 +329,7 @@ describe('App', () => {
       expect(state.stoppable.value).toBe(true)
     })
 
-    it('calls backend.sendPrompt when no session exists (first message)', () => {
+    it('calls backend.sendPromptWithRequestId when no session exists (first message)', () => {
       state.sessionId.value = null
       const { getByLabelText } = render(<App />)
       const textarea = getByLabelText('Enter your prompt...')
@@ -338,8 +340,8 @@ describe('App', () => {
         vi.advanceTimersByTime(2000)
       })
 
-      expect(mockBackend.sendPrompt).toHaveBeenCalledWith('first message')
-      expect(mockBackend.sendPromptWithSession).not.toHaveBeenCalled()
+      expect(mockBackend.sendPromptWithRequestId).toHaveBeenCalledWith('first message', expect.any(String))
+      expect(mockBackend.sendPromptWithSessionAndRequestId).not.toHaveBeenCalled()
     })
 
     it('sets loading=true when continue is triggered', () => {

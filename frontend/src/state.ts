@@ -12,6 +12,11 @@ export const loading = signal(false)
 export const stoppable = signal(false)
 export const error = signal<string | null>(null)
 export const sessionId = signal<string | null>(null)
+export const currentRequestId = signal<string | null>(null)
+
+export function generateRequestId(): string {
+  return `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+}
 
 export const sessions = signal<SessionInfo[]>([])
 export const sessionsLoading = signal(false)
@@ -40,10 +45,20 @@ export function addMessage(msg: ChatMessage): void {
   messages.value = [...messages.value, msg]
 }
 
+export function setCurrentRequestId(id: string | null): void {
+  currentRequestId.value = id
+}
+
 export function handleBridgeEvent(event: BridgeEvent): void {
+  // Filter events by request_id - only process events for our current request
+  if (event.request_id && currentRequestId.value && event.request_id !== currentRequestId.value) {
+    console.log('[STATE] Event FILTERED - event request:', event.request_id, 'my request:', currentRequestId.value)
+    return
+  }
+
   switch (event.type) {
     case 'system':
-      console.log('[STATE] system event - session_id:', event.session_id, 'model:', event.model)
+      console.log('[STATE] system event - session_id:', event.session_id, 'model:', event.model, 'request_id:', event.request_id)
       if (event.session_id) {
         sessionId.value = event.session_id
       }
@@ -181,6 +196,7 @@ export function resetState(): void {
   stoppable.value = false
   error.value = null
   sessionId.value = null
+  currentRequestId.value = null
   sessions.value = []
   sessionsLoading.value = false
   sessionsError.value = null
