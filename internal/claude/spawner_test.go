@@ -389,3 +389,87 @@ func TestExecCmd_Signal_WithProcess(t *testing.T) {
 	// Wait will return error since we killed it
 	_ = cmd.Wait()
 }
+
+func TestSendPrompt_ConcurrentCallsReturnsError(t *testing.T) {
+	// Create a mock that blocks on Wait() to simulate a long-running command
+	waitCh := make(chan struct{})
+	startedCh := make(chan struct{})
+	mock := &mockCmd{
+		stdout:  io.NopCloser(bytes.NewBufferString("")),
+		waitErr: nil,
+	}
+
+	// Override Wait to block until channel is closed
+	blockingMock := &blockingMockCmd{
+		mockCmd:   mock,
+		waitCh:    waitCh,
+		startedCh: startedCh,
+	}
+
+	callCount := 0
+	s := &Spawner{
+		config: SpawnerConfig{ClaudePath: "claude"},
+		cmdFactory: func(ctx context.Context, name string, args ...string) Cmd {
+			callCount++
+			return blockingMock
+		},
+	}
+
+	// Start first prompt in goroutine (will block on Wait)
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- s.SendPrompt(context.Background(), "first", func(ev StreamEvent) {})
+	}()
+
+	// Wait until the first command has started and is blocking on Wait
+	<-startedCh
+
+	// Second concurrent call should return error immediately
+	err := s.SendPrompt(context.Background(), "second", func(ev StreamEvent) {})
+	if err == nil {
+		t.Fatal("expected error for concurrent call, got nil")
+	}
+	if err.Error() != "a prompt is already running" {
+		t.Errorf("expected error 'a prompt is already running', got: %v", err)
+	}
+
+	// Verify only one command was created
+	if callCount != 1 {
+		t.Errorf("expected cmdFactory called once, got %d", callCount)
+	}
+
+	// Unblock the first call
+	close(waitCh)
+
+	// First call should complete successfully
+	if err := <-errCh; err != nil {
+		t.Errorf("first call should succeed, got: %v", err)
+	}
+
+	// After first completes, a new call should work
+	mock2 := &mockCmd{
+		stdout: io.NopCloser(bytes.NewBufferString("")),
+	}
+	s.cmdFactory = newMockFactory(mock2)
+
+	err = s.SendPrompt(context.Background(), "third", func(ev StreamEvent) {})
+	if err != nil {
+		t.Errorf("third call should succeed after first completes, got: %v", err)
+	}
+}
+
+// blockingMockCmd wraps mockCmd but blocks on Wait until channel is closed
+type blockingMockCmd struct {
+	*mockCmd
+	waitCh    chan struct{}
+	startedCh chan struct{}
+	once      sync.Once
+}
+
+func (m *blockingMockCmd) Wait() error {
+	m.once.Do(func() {
+		close(m.startedCh)
+	})
+	<-m.waitCh
+	return m.mockCmd.Wait()
+}

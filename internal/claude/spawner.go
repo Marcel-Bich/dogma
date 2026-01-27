@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -93,6 +94,13 @@ func (s *Spawner) Cancel() {
 }
 
 func (s *Spawner) run(ctx context.Context, args []string, handler EventHandler) error {
+	s.mu.Lock()
+	if s.cmd != nil {
+		s.mu.Unlock()
+		return errors.New("a prompt is already running")
+	}
+	s.mu.Unlock()
+
 	cmd := s.cmdFactory(ctx, s.config.ClaudePath, args...)
 	if s.config.WorkingDir != "" {
 		cmd.SetDir(s.config.WorkingDir)

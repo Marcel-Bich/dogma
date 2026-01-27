@@ -19,7 +19,10 @@ import {
   spellCheck,
   backgroundColor,
   handleBridgeEvent,
+  addMessage,
+  generateId,
   setLoading,
+  setStoppable,
   setError,
   setSettingsOpen,
   setActiveTheme,
@@ -29,7 +32,7 @@ import {
   setBackgroundColor,
 } from './state'
 import { loadTheme, getThemeColors, applyTheme, applyIntensity, applyBackgroundColor, saveTheme } from './themes'
-import type { BridgeEvent } from './types'
+import type { BridgeEvent, ChatMessage } from './types'
 
 export function App() {
   const [showSessions, setShowSessions] = useState(false)
@@ -53,9 +56,11 @@ export function App() {
     const unsub = backend.onEvent((event: BridgeEvent) => {
       if (event.type === 'result' && !event.is_error) {
         setLoading(false)
+        setStoppable(false)
       } else if (event.type === 'result' && event.is_error) {
         setError(event.result || 'Unknown error')
         setLoading(false)
+        setStoppable(false)
       } else {
         handleBridgeEvent(event)
       }
@@ -67,14 +72,30 @@ export function App() {
   function handleSend(text: string) {
     // Start a completely new session
     sessionId.value = null
+    const userMessage: ChatMessage = {
+      id: generateId(),
+      role: 'user',
+      blocks: [{ type: 'text', content: text }],
+      timestamp: Date.now(),
+    }
+    addMessage(userMessage)
     setLoading(true)
+    setStoppable(true)
     setError(null)
     backend.sendPrompt(text)
   }
 
   function handleContinue(text: string) {
     // Continue current session if one exists, otherwise start new
+    const userMessage: ChatMessage = {
+      id: generateId(),
+      role: 'user',
+      blocks: [{ type: 'text', content: text }],
+      timestamp: Date.now(),
+    }
+    addMessage(userMessage)
     setLoading(true)
+    setStoppable(true)
     setError(null)
     if (sessionId.value) {
       backend.sendPromptWithSession(text, sessionId.value)
