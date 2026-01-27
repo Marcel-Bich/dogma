@@ -115,6 +115,13 @@ func (s *Spawner) run(ctx context.Context, args []string, handler EventHandler) 
 	s.cmd = cmd
 	s.mu.Unlock()
 
+	// Always clear s.cmd when done, even on error
+	defer func() {
+		s.mu.Lock()
+		s.cmd = nil
+		s.mu.Unlock()
+	}()
+
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("start claude: %w", err)
 	}
@@ -135,10 +142,6 @@ func (s *Spawner) run(ctx context.Context, args []string, handler EventHandler) 
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("claude exited: %w", err)
 	}
-
-	s.mu.Lock()
-	s.cmd = nil
-	s.mu.Unlock()
 
 	return nil
 }
