@@ -28,7 +28,7 @@ export function MessageBlockView({ block }: Props) {
       return <div class="text-green-400 text-sm" style={{ color: 'var(--arctic-cyan-light)' }}>{block.content}</div>
 
     case 'error':
-      return <div class="text-red-400 text-sm">{block.content}</div>
+      return <div class="error-block text-sm">{block.content}</div>
 
     default:
       return null

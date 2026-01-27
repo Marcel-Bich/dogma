@@ -141,6 +141,94 @@ describe('MessageList', () => {
       const roleEl = container.querySelector('[data-role="system"]')
       expect(roleEl).toBeTruthy()
     })
+
+    it('shows role for user messages', () => {
+      const messages: ChatMessage[] = [
+        {
+          id: 'msg-1',
+          role: 'user',
+          blocks: [{ type: 'text', content: 'user input' }],
+          timestamp: 1000,
+        },
+      ]
+      const { container } = render(
+        <MessageList messages={messages} loading={false} />
+      )
+      const roleEl = container.querySelector('[data-role="user"]')
+      expect(roleEl).toBeTruthy()
+    })
+  })
+
+  describe('message styling by role', () => {
+    it('applies message-user class to user messages', () => {
+      const messages: ChatMessage[] = [
+        {
+          id: 'msg-1',
+          role: 'user',
+          blocks: [{ type: 'text', content: 'hello' }],
+          timestamp: 1000,
+        },
+      ]
+      const { container } = render(
+        <MessageList messages={messages} loading={false} />
+      )
+      const userMsg = container.querySelector('.message-user')
+      expect(userMsg).toBeTruthy()
+    })
+
+    it('applies message-assistant class to assistant messages', () => {
+      const messages: ChatMessage[] = [
+        {
+          id: 'msg-1',
+          role: 'assistant',
+          blocks: [{ type: 'text', content: 'hello' }],
+          timestamp: 1000,
+        },
+      ]
+      const { container } = render(
+        <MessageList messages={messages} loading={false} />
+      )
+      const assistantMsg = container.querySelector('.message-assistant')
+      expect(assistantMsg).toBeTruthy()
+    })
+
+    it('applies message-system class to system messages', () => {
+      const messages: ChatMessage[] = [
+        {
+          id: 'msg-1',
+          role: 'system',
+          blocks: [{ type: 'text', content: 'info' }],
+          timestamp: 1000,
+        },
+      ]
+      const { container } = render(
+        <MessageList messages={messages} loading={false} />
+      )
+      const systemMsg = container.querySelector('.message-system')
+      expect(systemMsg).toBeTruthy()
+    })
+
+    it('renders user and assistant messages with different styling', () => {
+      const messages: ChatMessage[] = [
+        {
+          id: 'msg-1',
+          role: 'user',
+          blocks: [{ type: 'text', content: 'user question' }],
+          timestamp: 1000,
+        },
+        {
+          id: 'msg-2',
+          role: 'assistant',
+          blocks: [{ type: 'text', content: 'assistant reply' }],
+          timestamp: 2000,
+        },
+      ]
+      const { container } = render(
+        <MessageList messages={messages} loading={false} />
+      )
+      expect(container.querySelector('.message-user')).toBeTruthy()
+      expect(container.querySelector('.message-assistant')).toBeTruthy()
+    })
   })
 
   describe('loading indicator', () => {

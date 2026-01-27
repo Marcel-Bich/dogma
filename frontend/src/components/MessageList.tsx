@@ -60,7 +60,7 @@ export function MessageList({ messages, loading, stoppable = false }: Props) {
       )}
 
       {messages.map((msg) => (
-        <div key={msg.id} data-role={msg.role} class="flex flex-col gap-1">
+        <div key={msg.id} data-role={msg.role} class={`flex flex-col gap-1 message-${msg.role}`}>
           {msg.blocks.map((block, i) => (
             <MessageBlockView key={i} block={block} />
           ))}
