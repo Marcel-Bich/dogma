@@ -3,7 +3,7 @@ import type { BridgeEvent, ChatMessage, MessageBlock, SessionInfo } from './type
 
 let idCounter = 0
 
-function generateId(): string {
+export function generateId(): string {
   return `msg-${++idCounter}-${Date.now()}`
 }
 

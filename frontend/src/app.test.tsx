@@ -136,6 +136,16 @@ describe('App', () => {
       expect(state.loading.value).toBe(false)
     })
 
+    it('result event without error sets stoppable=false', () => {
+      render(<App />)
+      state.setLoading(true)
+      state.setStoppable(true)
+
+      expect(registeredCallback).toBeDefined()
+      registeredCallback!({ type: 'result', result: 'done' })
+      expect(state.stoppable.value).toBe(false)
+    })
+
     it('result event with is_error sets error and loading=false', () => {
       render(<App />)
       state.setLoading(true)
@@ -144,6 +154,16 @@ describe('App', () => {
       registeredCallback!({ type: 'result', result: 'something failed', is_error: true })
       expect(state.error.value).toBe('something failed')
       expect(state.loading.value).toBe(false)
+    })
+
+    it('result event with is_error sets stoppable=false', () => {
+      render(<App />)
+      state.setLoading(true)
+      state.setStoppable(true)
+
+      expect(registeredCallback).toBeDefined()
+      registeredCallback!({ type: 'result', result: 'something failed', is_error: true })
+      expect(state.stoppable.value).toBe(false)
     })
 
     it('result event with is_error and no result uses fallback message', () => {
@@ -178,6 +198,39 @@ describe('App', () => {
       })
 
       expect(mockBackend.sendPrompt).toHaveBeenCalledWith('test prompt')
+    })
+
+    it('adds user message to messages list before calling backend', () => {
+      const { getByLabelText } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'my user message' } })
+      // 2x Enter = new session
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(state.messages.value.length).toBe(1)
+      const msg = state.messages.value[0]
+      expect(msg.role).toBe('user')
+      expect(msg.blocks).toHaveLength(1)
+      expect(msg.blocks[0].type).toBe('text')
+      expect(msg.blocks[0].content).toBe('my user message')
+    })
+
+    it('sets stoppable=true when loading starts', () => {
+      const { getByLabelText } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      // 2x Enter = new session
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(state.stoppable.value).toBe(true)
     })
 
     it('clears sessionId when starting new session', () => {
@@ -239,6 +292,39 @@ describe('App', () => {
       })
 
       expect(mockBackend.sendPromptWithSession).toHaveBeenCalledWith('continue work', 'existing-session-id')
+    })
+
+    it('adds user message to messages list before calling backend', () => {
+      state.sessionId.value = 'existing-session-id'
+      const { getByLabelText } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'continue this' } })
+      // 1x Enter = continue session
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(state.messages.value.length).toBe(1)
+      const msg = state.messages.value[0]
+      expect(msg.role).toBe('user')
+      expect(msg.blocks).toHaveLength(1)
+      expect(msg.blocks[0].type).toBe('text')
+      expect(msg.blocks[0].content).toBe('continue this')
+    })
+
+    it('sets stoppable=true when loading starts', () => {
+      state.sessionId.value = 'existing-session-id'
+      const { getByLabelText } = render(<App />)
+      const textarea = getByLabelText('Enter your prompt...')
+      fireEvent.input(textarea, { target: { value: 'test' } })
+      // 1x Enter = continue session
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(state.stoppable.value).toBe(true)
     })
 
     it('calls backend.sendPrompt when no session exists (first message)', () => {
@@ -356,7 +442,7 @@ describe('App', () => {
     })
 
     it('sets active theme and custom accent from stored values', () => {
-      vi.mocked(themes.loadTheme).mockReturnValueOnce({ presetId: 'pulse', customAccent: '#ff0000', intensity: 70 })
+      vi.mocked(themes.loadTheme).mockReturnValueOnce({ presetId: 'pulse', customAccent: '#ff0000', intensity: 70, spellCheck: false, backgroundColor: '#000000' })
       render(<App />)
       expect(state.activeThemeId.value).toBe('pulse')
       expect(state.customAccent.value).toBe('#ff0000')

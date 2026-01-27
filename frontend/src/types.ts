@@ -43,7 +43,7 @@ export type MessageBlock = TextBlock | ThinkingBlock | ToolUseBlock | ResultBloc
 
 export interface ChatMessage {
   id: string
-  role: 'assistant' | 'system'
+  role: 'assistant' | 'system' | 'user'
   blocks: MessageBlock[]
   timestamp: number
 }

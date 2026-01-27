@@ -242,7 +242,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
           rows={1}
           readOnly={isPending}
           disabled={loading}
-          spellCheck={spellCheck}
+          spellcheck={spellCheck}
         />
         {showIndicator && (
           <button
