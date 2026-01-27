@@ -59,6 +59,17 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
     }
   }, [])
 
+  // Global ESC key listener for cancel during loading (works even without textarea focus)
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if (loading && stoppable && e.key === 'Escape') {
+        onCancel()
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [loading, stoppable, onCancel])
+
   // Async focus after 250ms for reliable focus after page reload
   useEffect(() => {
     const focusTimer = setTimeout(() => {
@@ -113,6 +124,8 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
     setEnterCount(0)
     enterCountRef.current = 0
     resetHeight()
+    // Keep focus on textarea after sending
+    textareaRef.current?.focus()
   }
 
   function cancelAndEdit() {
@@ -121,11 +134,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   }
 
   function handleKeyDown(e: KeyboardEvent) {
-    if (loading && stoppable && e.key === 'Escape') {
-      onCancel()
-      return
-    }
-
+    // ESC during loading is handled by global listener (works even without textarea focus)
     if (loading) return
 
     if (e.key === 'Enter' && !e.shiftKey) {
