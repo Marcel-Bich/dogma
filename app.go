@@ -81,12 +81,22 @@ func (a *App) startup(ctx context.Context) {
 
 // SendPrompt sends a prompt to Claude and streams events to the frontend.
 func (a *App) SendPrompt(prompt string) {
-	go a.streamPrompt(prompt, "")
+	go a.streamPrompt(prompt, "", "")
 }
 
 // SendPromptWithSession sends a prompt to Claude resuming an existing session.
 func (a *App) SendPromptWithSession(prompt string, sessionID string) {
-	go a.streamPrompt(prompt, sessionID)
+	go a.streamPrompt(prompt, sessionID, "")
+}
+
+// SendPromptWithRequestId sends a prompt with a client-generated request ID for event filtering.
+func (a *App) SendPromptWithRequestId(prompt string, requestID string) {
+	go a.streamPrompt(prompt, "", requestID)
+}
+
+// SendPromptWithSessionAndRequestId sends a prompt resuming a session with request ID for event filtering.
+func (a *App) SendPromptWithSessionAndRequestId(prompt string, sessionID string, requestID string) {
+	go a.streamPrompt(prompt, sessionID, requestID)
 }
 
 // CancelPrompt cancels the currently running Claude process.
@@ -128,13 +138,31 @@ func (a *App) ApplyUpdate() {
 	}()
 }
 
-func (a *App) streamPrompt(prompt string, sessionID string) {
+func (a *App) streamPrompt(prompt string, sessionID string, requestID string) {
+	// Track session ID to add to all events (assistant events don't have it)
+	var currentSessionID string
+	if sessionID != "" {
+		currentSessionID = sessionID
+	}
+
 	handler := func(event claude.StreamEvent) {
 		parsed, err := claude.ParseEvent(event.Payload)
 		if err != nil || parsed.Type == "" {
 			return
 		}
 		bridge := claude.ToBridgeEvent(parsed)
+
+		// Capture session ID from system event
+		if bridge.SessionID != "" {
+			currentSessionID = bridge.SessionID
+		}
+		// Add session ID to all events for frontend filtering
+		if bridge.SessionID == "" && currentSessionID != "" {
+			bridge.SessionID = currentSessionID
+		}
+		// Add request ID to ALL events for client-side filtering
+		bridge.RequestID = requestID
+
 		a.emitter.Emit("claude:event", bridge)
 	}
 

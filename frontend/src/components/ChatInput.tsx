@@ -141,6 +141,22 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
     // ESC during loading is handled by global listener (works even without textarea focus)
     if (loading) return
 
+    // Alt+Enter inserts newline (like terminal behavior)
+    if (e.key === 'Enter' && e.altKey) {
+      e.preventDefault()
+      const target = e.target as HTMLTextAreaElement
+      const start = target.selectionStart
+      const end = target.selectionEnd
+      const newValue = text.slice(0, start) + '\n' + text.slice(end)
+      setText(newValue)
+      // Move cursor after newline
+      setTimeout(() => {
+        target.selectionStart = target.selectionEnd = start + 1
+        autoGrow(target)
+      }, 0)
+      return
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (!hasText) return

@@ -30,6 +30,9 @@ import {
   resetState,
   loadSessions,
   formatErrorMessage,
+  currentRequestId,
+  setCurrentRequestId,
+  generateRequestId,
 } from './state'
 import type { BridgeEvent, ChatMessage, SessionInfo } from './types'
 
@@ -167,13 +170,27 @@ describe('state', () => {
       })
     })
 
-    it('with type="system" sets sessionId signal', () => {
+    it('with type="system" sets sessionId signal when request_id matches', () => {
+      setCurrentRequestId('my-request-123')
       const event: BridgeEvent = {
         type: 'system',
         session_id: 'sess-abc-123',
+        request_id: 'my-request-123',
       }
       handleBridgeEvent(event)
       expect(sessionId.value).toBe('sess-abc-123')
+    })
+
+    it('with type="system" does NOT set sessionId when request_id differs', () => {
+      // Another client sent a prompt - we should ignore their session
+      setCurrentRequestId('my-request-123')
+      const event: BridgeEvent = {
+        type: 'system',
+        session_id: 'other-session',
+        request_id: 'other-request-456',
+      }
+      handleBridgeEvent(event)
+      expect(sessionId.value).toBeNull() // should remain null (event filtered)
     })
 
     it('multiple sequential assistant events accumulate blocks in same message', () => {
@@ -225,9 +242,38 @@ describe('state', () => {
     })
 
     it('system event without session_id does not change sessionId', () => {
-      handleBridgeEvent({ type: 'system', session_id: 'initial' })
-      handleBridgeEvent({ type: 'system' })
+      setCurrentRequestId('my-request')
+      handleBridgeEvent({ type: 'system', session_id: 'initial', request_id: 'my-request' })
+      // Second system event without session_id should not override
+      handleBridgeEvent({ type: 'system', request_id: 'my-request' })
       expect(sessionId.value).toBe('initial')
+    })
+
+    it('assistant event from different request is filtered out', () => {
+      // Set up our request
+      setCurrentRequestId('my-request')
+      handleBridgeEvent({ type: 'system', session_id: 'my-session', request_id: 'my-request' })
+
+      // Assistant event from same request should be processed
+      handleBridgeEvent({ type: 'assistant', text: 'hello', request_id: 'my-request' })
+      expect(messages.value).toHaveLength(1)
+
+      // Assistant event from different request should be ignored
+      handleBridgeEvent({ type: 'assistant', text: 'other', request_id: 'other-request' })
+      expect(messages.value).toHaveLength(1) // still 1, not 2
+    })
+
+    it('result event from different request is filtered out', () => {
+      // Set up our request
+      setCurrentRequestId('my-request')
+      handleBridgeEvent({ type: 'system', session_id: 'my-session', request_id: 'my-request' })
+      handleBridgeEvent({ type: 'assistant', text: 'hello', request_id: 'my-request' })
+
+      // Result from different request should be ignored
+      handleBridgeEvent({ type: 'result', is_error: true, result: 'error', request_id: 'other-request' })
+      // No error message should be added
+      expect(messages.value).toHaveLength(1)
+      expect(messages.value[0].blocks[0].type).toBe('text')
     })
 
     it('successful result with empty result does not add a block', () => {
@@ -406,7 +452,8 @@ describe('state', () => {
       setLoading(true)
       setStoppable(true)
       setError('some error')
-      handleBridgeEvent({ type: 'system', session_id: 'sess-1' })
+      setCurrentRequestId('test-request')
+      handleBridgeEvent({ type: 'system', session_id: 'sess-1', request_id: 'test-request' })
 
       // Reset
       resetState()
@@ -566,6 +613,44 @@ describe('state', () => {
     it('setBackgroundColor can be set to any hex color', () => {
       setBackgroundColor('#ffffff')
       expect(backgroundColor.value).toBe('#ffffff')
+    })
+  })
+
+  describe('currentRequestId', () => {
+    it('starts as null', () => {
+      expect(currentRequestId.value).toBeNull()
+    })
+
+    it('setCurrentRequestId updates currentRequestId.value', () => {
+      setCurrentRequestId('req-123')
+      expect(currentRequestId.value).toBe('req-123')
+    })
+
+    it('setCurrentRequestId(null) clears currentRequestId', () => {
+      setCurrentRequestId('req-123')
+      setCurrentRequestId(null)
+      expect(currentRequestId.value).toBeNull()
+    })
+
+    it('generateRequestId creates unique IDs', () => {
+      const id1 = generateRequestId()
+      const id2 = generateRequestId()
+      expect(id1).toMatch(/^req-\d+-[a-z0-9]+$/)
+      expect(id2).toMatch(/^req-\d+-[a-z0-9]+$/)
+      expect(id1).not.toBe(id2)
+    })
+
+    it('events without request_id are processed when currentRequestId is set', () => {
+      setCurrentRequestId('my-request')
+      // Events without request_id should pass through (backward compatibility)
+      handleBridgeEvent({ type: 'assistant', text: 'hello' })
+      expect(messages.value).toHaveLength(1)
+    })
+
+    it('events are processed when currentRequestId is null', () => {
+      // When no request is active, all events should be processed
+      handleBridgeEvent({ type: 'assistant', text: 'hello' })
+      expect(messages.value).toHaveLength(1)
     })
   })
 

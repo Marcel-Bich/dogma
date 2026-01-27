@@ -47,6 +47,14 @@ export class MockBackend implements BackendAdapter {
     this.emitMockEvents()
   }
 
+  async sendPromptWithRequestId(_text: string, requestId: string): Promise<void> {
+    this.emitMockEventsWithRequestId(requestId)
+  }
+
+  async sendPromptWithSessionAndRequestId(_text: string, _sessionId: string, requestId: string): Promise<void> {
+    this.emitMockEventsWithRequestId(requestId)
+  }
+
   async cancelPrompt(): Promise<void> {
     this.emitDoneEvent()
   }
@@ -72,6 +80,14 @@ export class MockBackend implements BackendAdapter {
     let delay = 50
     for (const event of MOCK_RESPONSE_EVENTS) {
       setTimeout(() => this.emit(event), delay)
+      delay += 100
+    }
+  }
+
+  private emitMockEventsWithRequestId(requestId: string): void {
+    let delay = 50
+    for (const event of MOCK_RESPONSE_EVENTS) {
+      setTimeout(() => this.emit({ ...event, request_id: requestId }), delay)
       delay += 100
     }
   }

@@ -247,6 +247,63 @@ describe('MessageList', () => {
       const loadingEl = container.querySelector('[data-testid="loading-indicator"]')
       expect(loadingEl).toBeNull()
     })
+
+    it('shows centered loading indicator when no messages', () => {
+      const { container } = render(
+        <MessageList messages={[]} loading={true} />
+      )
+      const loadingEl = container.querySelector('[data-testid="loading-indicator"]')
+      expect(loadingEl).toBeTruthy()
+      // Should have h-full for centering
+      expect(loadingEl?.className).toContain('h-full')
+    })
+
+    it('shows sticky loading indicator when messages exist', () => {
+      const messages: ChatMessage[] = [
+        {
+          id: 'msg-1',
+          role: 'assistant',
+          blocks: [{ type: 'text', content: 'hello' }],
+          timestamp: 1000,
+        },
+      ]
+      const { container } = render(
+        <MessageList messages={messages} loading={true} />
+      )
+      const loadingEl = container.querySelector('[data-testid="loading-indicator"]')
+      expect(loadingEl).toBeTruthy()
+      // Should have sticky class for floating at top
+      expect(loadingEl?.className).toContain('loading-indicator-sticky')
+    })
+
+    it('shows full DOGMA loading indicator when messages exist and loading', () => {
+      const messages: ChatMessage[] = [
+        {
+          id: 'msg-1',
+          role: 'assistant',
+          blocks: [{ type: 'text', content: 'hello' }],
+          timestamp: 1000,
+        },
+      ]
+      const { container, getByText } = render(
+        <MessageList messages={messages} loading={true} />
+      )
+      // Should have full DOGMA branding in sticky indicator
+      expect(getByText('DOGMA')).toBeTruthy()
+      // Should have the 140px container with pulse rings
+      const loadingIndicator = container.querySelector('.loading-indicator-sticky')
+      expect(loadingIndicator).toBeTruthy()
+      const ringContainer = loadingIndicator?.querySelector('[style*="width: 140px"]')
+      expect(ringContainer).toBeTruthy()
+    })
+
+    it('shows loading when stoppable=true even if loading=false', () => {
+      const { container } = render(
+        <MessageList messages={[]} loading={false} stoppable={true} />
+      )
+      const loadingEl = container.querySelector('[data-testid="loading-indicator"]')
+      expect(loadingEl).toBeTruthy()
+    })
   })
 
   describe('auto-scroll', () => {

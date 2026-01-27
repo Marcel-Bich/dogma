@@ -119,6 +119,19 @@ body {
   animation: loading-dot 1s ease-in-out infinite;
 }
 
+/* Sticky loading indicator for when messages exist */
+.loading-indicator-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+  pointer-events: none;
+  width: 100%;
+  margin: 0 auto -156px;
+}
+
 /* Override Wails reconnect overlay with custom pulse */
 .wails-reconnect-overlay {
   background: var(--arctic-black) !important;
@@ -204,7 +217,7 @@ body {
 
 .message-assistant {
   align-self: flex-start;
-  max-width: 85%;
+  width: 100%;
   overflow-wrap: break-word;
   word-break: break-word;
   white-space: pre-wrap;
@@ -227,15 +240,389 @@ body {
 
 /* Mobile-first responsive adjustments */
 @media (min-width: 768px) {
-  .message-user,
-  .message-assistant {
+  .message-user {
     max-width: 75%;
   }
 }
 
 @media (min-width: 1024px) {
-  .message-user,
-  .message-assistant {
+  .message-user {
     max-width: 65%;
   }
+}
+
+/* Markdown content styling */
+.markdown-content {
+  white-space: normal;
+}
+
+.markdown-content p {
+  margin: 0 0 0.75em 0;
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  margin: 1em 0 0.5em 0;
+  color: var(--arctic-cyan-light);
+  font-weight: 600;
+}
+
+.markdown-content h1:first-child,
+.markdown-content h2:first-child,
+.markdown-content h3:first-child {
+  margin-top: 0;
+}
+
+.markdown-content h1 { font-size: 1.5em; }
+.markdown-content h2 { font-size: 1.3em; }
+.markdown-content h3 { font-size: 1.1em; }
+
+.markdown-content code {
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(var(--arctic-accent-rgb), 0.1);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: var(--arctic-cyan-light);
+}
+
+.markdown-content pre {
+  background: #0a0a0a;
+  border: 1px solid var(--arctic-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+
+.markdown-content pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: #9ca3af;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.markdown-content li {
+  margin: 0.25em 0;
+}
+
+.markdown-content ul {
+  list-style-type: disc;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+}
+
+.markdown-content blockquote {
+  border-left: 3px solid var(--arctic-cyan-dark);
+  margin: 0.75em 0;
+  padding-left: 1em;
+  color: var(--arctic-dim);
+}
+
+.markdown-content a {
+  color: var(--arctic-cyan);
+  text-decoration: none;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--arctic-border);
+  margin: 1em 0;
+}
+
+.markdown-content strong {
+  font-weight: 600;
+  color: var(--arctic-cyan-light);
+}
+
+.markdown-content em {
+  font-style: italic;
+}
+
+/* GFM Checklists / Task Lists - works with or without task-list classes */
+.markdown-content ul.contains-task-list,
+.markdown-content ul:has(> li > input[type="checkbox"]) {
+  list-style-type: none;
+  padding-left: 0.5em;
+}
+
+.markdown-content li.task-list-item,
+.markdown-content li:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+  margin: 0.35em 0;
+}
+
+.markdown-content li.task-list-item input[type="checkbox"],
+.markdown-content li > input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border: 1px solid var(--arctic-cyan-dark);
+  border-radius: 3px;
+  background: transparent;
+  margin-top: 0.15em;
+  cursor: default;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.markdown-content li.task-list-item input[type="checkbox"]:checked,
+.markdown-content li > input[type="checkbox"]:checked {
+  background: var(--arctic-cyan-dark);
+  border-color: var(--arctic-cyan);
+}
+
+.markdown-content li.task-list-item input[type="checkbox"]:checked::after,
+.markdown-content li > input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--arctic-black);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.markdown-content li.task-list-item input[type="checkbox"]:focus,
+.markdown-content li > input[type="checkbox"]:focus {
+  outline: 1px solid var(--arctic-cyan);
+  outline-offset: 1px;
+}
+
+/* Checked items get dimmed text */
+.markdown-content li.task-list-item:has(input:checked),
+.markdown-content li:has(> input[type="checkbox"]:checked) {
+  color: var(--arctic-dim);
+}
+
+/* GFM Tables */
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75em 0;
+  font-size: 0.9em;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--arctic-border);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-content th {
+  background: rgba(var(--arctic-accent-rgb), 0.1);
+  color: var(--arctic-cyan-light);
+  font-weight: 600;
+}
+
+.markdown-content tr:nth-child(even) {
+  background: rgba(var(--arctic-accent-rgb), 0.03);
+}
+
+.markdown-content tr:hover {
+  background: rgba(var(--arctic-accent-rgb), 0.08);
+}
+
+/* Table alignment classes (generated by marked) */
+.markdown-content td[align="center"],
+.markdown-content th[align="center"] {
+  text-align: center;
+}
+
+.markdown-content td[align="right"],
+.markdown-content th[align="right"] {
+  text-align: right;
+}
+
+/* Syntax Highlighting (highlight.js) - Arctic Theme */
+.markdown-content .hljs {
+  color: #c8c8d8;
+}
+
+.markdown-content .hljs-comment,
+.markdown-content .hljs-quote {
+  color: #6a7a8a;
+  font-style: italic;
+}
+
+.markdown-content .hljs-keyword,
+.markdown-content .hljs-selector-tag,
+.markdown-content .hljs-tag {
+  color: #f472b6;
+}
+
+.markdown-content .hljs-string,
+.markdown-content .hljs-template-literal,
+.markdown-content .hljs-addition {
+  color: #a3e635;
+}
+
+.markdown-content .hljs-number,
+.markdown-content .hljs-literal,
+.markdown-content .hljs-variable,
+.markdown-content .hljs-template-variable {
+  color: #fb923c;
+}
+
+.markdown-content .hljs-function,
+.markdown-content .hljs-title {
+  color: #60a5fa;
+}
+
+.markdown-content .hljs-type,
+.markdown-content .hljs-class,
+.markdown-content .hljs-built_in {
+  color: #fbbf24;
+}
+
+.markdown-content .hljs-attr,
+.markdown-content .hljs-attribute {
+  color: var(--arctic-cyan);
+}
+
+.markdown-content .hljs-property {
+  color: #c4b5fd;
+}
+
+.markdown-content .hljs-params {
+  color: #c8c8d8;
+}
+
+.markdown-content .hljs-punctuation {
+  color: #9ca3af;
+}
+
+.markdown-content .hljs-operator {
+  color: #f472b6;
+}
+
+.markdown-content .hljs-deletion {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.markdown-content .hljs-addition {
+  background: rgba(163, 230, 53, 0.1);
+}
+
+/* Footnotes (marked-footnote) */
+.markdown-content .footnotes {
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 1px solid var(--arctic-border);
+  font-size: 0.85em;
+  color: var(--arctic-dim);
+}
+
+.markdown-content .footnotes-list {
+  padding-left: 1.5em;
+}
+
+.markdown-content .footnote-item {
+  margin: 0.5em 0;
+}
+
+.markdown-content .footnote-ref,
+.markdown-content .footnote-backref {
+  color: var(--arctic-cyan);
+  text-decoration: none;
+  font-size: 0.8em;
+  vertical-align: super;
+}
+
+.markdown-content .footnote-ref:hover,
+.markdown-content .footnote-backref:hover {
+  text-decoration: underline;
+}
+
+/* Smooth scroll for anchor links */
+.markdown-content {
+  scroll-behavior: smooth;
+}
+
+/* Anchor link target highlight */
+.markdown-content :target {
+  animation: anchor-highlight 2s ease-out;
+}
+
+@keyframes anchor-highlight {
+  0% { background: rgba(var(--arctic-accent-rgb), 0.3); }
+  100% { background: transparent; }
+}
+
+/* Context Menu */
+.context-menu {
+  background: #0a0a0a;
+  border: 1px solid var(--arctic-border);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 180px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--arctic-text);
+  font-size: 0.85rem;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover:not(.disabled) {
+  background: rgba(var(--arctic-accent-rgb), 0.15);
+  color: var(--arctic-cyan-light);
+}
+
+.context-menu-item.disabled {
+  color: var(--arctic-dim);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.context-menu-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--arctic-border);
+  margin: 4px 8px;
 }

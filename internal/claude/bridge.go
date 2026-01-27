@@ -7,6 +7,7 @@ import "encoding/json"
 type BridgeEvent struct {
 	Type      string          `json:"type"`
 	SessionID string          `json:"session_id,omitempty"`
+	RequestID string          `json:"request_id,omitempty"`
 	Text      string          `json:"text,omitempty"`
 	Thinking  string          `json:"thinking,omitempty"`
 	ToolName  string          `json:"tool_name,omitempty"`

@@ -21,6 +21,7 @@ import {
   handleBridgeEvent,
   addMessage,
   generateId,
+  generateRequestId,
   setLoading,
   setStoppable,
   setError,
@@ -30,6 +31,7 @@ import {
   setIntensity,
   setSpellCheck,
   setBackgroundColor,
+  setCurrentRequestId,
 } from './state'
 import { loadTheme, getThemeColors, applyTheme, applyIntensity, applyBackgroundColor, saveTheme } from './themes'
 import type { BridgeEvent, ChatMessage } from './types'
@@ -80,8 +82,10 @@ export function App() {
   function handleSend(text: string) {
     // Start a completely new session
     const trimmed = text.trim()
-    console.log('[APP] handleSend - new session, prompt:', trimmed.substring(0, 100) + (trimmed.length > 100 ? '...' : ''))
+    const requestId = generateRequestId()
+    console.log('[APP] handleSend - new session, requestId:', requestId, 'prompt:', trimmed.substring(0, 100) + (trimmed.length > 100 ? '...' : ''))
     sessionId.value = null
+    setCurrentRequestId(requestId)
     const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -92,13 +96,15 @@ export function App() {
     setLoading(true)
     setStoppable(true)
     setError(null)
-    backend.sendPrompt(trimmed)
+    backend.sendPromptWithRequestId(trimmed, requestId)
   }
 
   function handleContinue(text: string) {
     // Continue current session if one exists, otherwise start new
     const trimmed = text.trim()
-    console.log('[APP] handleContinue - sessionId:', sessionId.value, ', prompt:', trimmed.substring(0, 100) + (trimmed.length > 100 ? '...' : ''))
+    const requestId = generateRequestId()
+    console.log('[APP] handleContinue - sessionId:', sessionId.value, ', requestId:', requestId, ', prompt:', trimmed.substring(0, 100) + (trimmed.length > 100 ? '...' : ''))
+    setCurrentRequestId(requestId)
     const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -111,10 +117,10 @@ export function App() {
     setError(null)
     if (sessionId.value) {
       console.log('[APP] Continuing existing session:', sessionId.value)
-      backend.sendPromptWithSession(trimmed, sessionId.value)
+      backend.sendPromptWithSessionAndRequestId(trimmed, sessionId.value, requestId)
     } else {
       console.log('[APP] No existing session, starting new')
-      backend.sendPrompt(trimmed)
+      backend.sendPromptWithRequestId(trimmed, requestId)
     }
   }
 
