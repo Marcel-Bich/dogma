@@ -38,6 +38,9 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
     } else {
       if (state === 'loading') {
         setState(hasText ? 'ready' : 'idle')
+        // Focus textarea after loading ends (cancel or completion)
+        // Use setTimeout to ensure disabled attribute is removed first
+        setTimeout(() => textareaRef.current?.focus(), 0)
       }
       setShowStop(false)
       if (stopTimerRef.current) {
@@ -131,6 +134,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   function cancelAndEdit() {
     cancelPending()
     setState('ready')
+    textareaRef.current?.focus()
   }
 
   function handleKeyDown(e: KeyboardEvent) {
