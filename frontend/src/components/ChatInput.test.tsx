@@ -325,6 +325,18 @@ describe('ChatInput', () => {
       })
       expect(textarea.style.height).toBe('auto')
     })
+
+    it('textarea retains focus after auto-send', () => {
+      const { getByLabelText } = setup()
+      const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
+      const focusSpy = vi.spyOn(textarea, 'focus')
+      fireEvent.input(textarea, { target: { value: 'test message' } })
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(focusSpy).toHaveBeenCalled()
+    })
   })
 
   describe('loading states', () => {
@@ -445,10 +457,11 @@ describe('ChatInput', () => {
       expect(props.onSend).not.toHaveBeenCalled()
     })
 
-    it('Escape during loading calls onCancel when stoppable', () => {
-      const { getByLabelText, props } = setup({ loading: true, stoppable: true })
-      const textarea = getByLabelText('Enter your prompt...')
-      fireEvent.keyDown(textarea, { key: 'Escape' })
+    it('Escape during loading calls onCancel when stoppable (via global handler)', () => {
+      const { props } = setup({ loading: true, stoppable: true })
+      // ESC is handled globally (not on textarea) so it works even when textarea is disabled
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+      window.dispatchEvent(event)
       expect(props.onCancel).toHaveBeenCalledTimes(1)
     })
 
@@ -456,6 +469,28 @@ describe('ChatInput', () => {
       const { getByLabelText, props } = setup({ loading: true, stoppable: false })
       const textarea = getByLabelText('Enter your prompt...')
       fireEvent.keyDown(textarea, { key: 'Escape' })
+      expect(props.onCancel).not.toHaveBeenCalled()
+    })
+
+    it('global Escape calls onCancel even without textarea focus', () => {
+      const { props } = setup({ loading: true, stoppable: true })
+      // Dispatch keyboard event on window (not textarea)
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+      window.dispatchEvent(event)
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('global Escape does nothing when not loading', () => {
+      const { props } = setup({ loading: false })
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+      window.dispatchEvent(event)
+      expect(props.onCancel).not.toHaveBeenCalled()
+    })
+
+    it('global Escape does nothing when not stoppable', () => {
+      const { props } = setup({ loading: true, stoppable: false })
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+      window.dispatchEvent(event)
       expect(props.onCancel).not.toHaveBeenCalled()
     })
 
