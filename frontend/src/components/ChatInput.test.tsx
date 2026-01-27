@@ -335,9 +335,16 @@ describe('ChatInput', () => {
       expect(indicator.className).toContain('opacity-40')
     })
 
-    it('indicator shows CSS square when loading AND stoppable', () => {
+    it('indicator shows loading dots initially, then CSS square after 1s when stoppable', () => {
       const { getByTestId } = setup({ loading: true, stoppable: true })
       const indicator = getByTestId('indicator')
+      // Initially shows loading dots
+      expect(indicator.querySelector('.loading-dots')).toBeTruthy()
+      expect(indicator.querySelector('.stop-square')).toBeFalsy()
+      // After 1s shows stop square
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
       const stopSquare = indicator.querySelector('.stop-square')
       expect(stopSquare).toBeTruthy()
       expect(stopSquare?.className).toContain('w-3')
@@ -345,8 +352,12 @@ describe('ChatInput', () => {
       expect(stopSquare?.className).toContain('bg-current')
     })
 
-    it('stop square indicator is not dim when stoppable', () => {
+    it('stop square indicator is not dim when stoppable (after 1s delay)', () => {
       const { getByTestId } = setup({ loading: true, stoppable: true })
+      // Wait for stop square to appear
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
       const indicator = getByTestId('indicator')
       expect(indicator.className).not.toContain('opacity-40')
     })
