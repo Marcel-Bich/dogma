@@ -13,14 +13,15 @@ import (
 
 // mockCmd implements the Cmd interface for testing.
 type mockCmd struct {
-	mu         sync.Mutex
-	dir        string
-	stdout     io.ReadCloser
-	pipeErr    error
-	startErr   error
-	waitErr    error
+	mu          sync.Mutex
+	dir         string
+	env         []string
+	stdout      io.ReadCloser
+	pipeErr     error
+	startErr    error
+	waitErr     error
 	signalCalls []os.Signal
-	started    bool
+	started     bool
 }
 
 func (m *mockCmd) StdoutPipe() (io.ReadCloser, error) {
@@ -44,6 +45,10 @@ func (m *mockCmd) Wait() error {
 
 func (m *mockCmd) SetDir(dir string) {
 	m.dir = dir
+}
+
+func (m *mockCmd) SetEnv(env []string) {
+	m.env = env
 }
 
 func (m *mockCmd) Signal(sig os.Signal) error {
@@ -361,6 +366,38 @@ func TestExecCmd_Integration(t *testing.T) {
 	}
 }
 
+func TestExecCmd_SetEnv_Integration(t *testing.T) {
+	// Test that SetEnv correctly passes environment to the child process.
+	// Use sh -c 'echo $VAR' to verify the environment variable is set.
+	cmd := defaultCmdFactory(context.Background(), "sh", "-c", "echo $TEST_VAR")
+
+	cmd.SetEnv([]string{"TEST_VAR=hello_from_test"})
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatalf("StdoutPipe error: %v", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+
+	buf := make([]byte, 1024)
+	n, _ := stdout.Read(buf)
+	if n == 0 {
+		t.Error("expected output from sh")
+	}
+
+	output := strings.TrimSpace(string(buf[:n]))
+	if output != "hello_from_test" {
+		t.Errorf("expected 'hello_from_test', got %q", output)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("Wait error: %v", err)
+	}
+}
+
 func TestExecCmd_Signal_NoProcess(t *testing.T) {
 	// Test Signal on an execCmd that has not been started (Process is nil)
 	cmd := defaultCmdFactory(context.Background(), "true")
@@ -618,5 +655,97 @@ func TestBuildArgs_AllOptions(t *testing.T) {
 	// Last arg should be the prompt
 	if args[len(args)-1] != "test prompt" {
 		t.Errorf("expected last arg to be prompt, got %q", args[len(args)-1])
+	}
+}
+
+func TestSendPrompt_WithConfigDir(t *testing.T) {
+	mock := &mockCmd{
+		stdout: io.NopCloser(bytes.NewBufferString("")),
+	}
+
+	s := &Spawner{
+		config:     SpawnerConfig{ClaudePath: "claude", ConfigDir: "/home/user/.claude-work"},
+		cmdFactory: newMockFactory(mock),
+	}
+
+	err := s.SendPrompt(context.Background(), "hello", func(ev StreamEvent) {})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check that CLAUDE_CONFIG_DIR was set in the environment
+	found := false
+	for _, env := range mock.env {
+		if env == "CLAUDE_CONFIG_DIR=/home/user/.claude-work" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected CLAUDE_CONFIG_DIR=/home/user/.claude-work in env, got: %v", mock.env)
+	}
+}
+
+func TestSendPrompt_NoConfigDir(t *testing.T) {
+	mock := &mockCmd{
+		stdout: io.NopCloser(bytes.NewBufferString("")),
+	}
+
+	s := &Spawner{
+		config:     SpawnerConfig{ClaudePath: "claude"},
+		cmdFactory: newMockFactory(mock),
+	}
+
+	err := s.SendPrompt(context.Background(), "hello", func(ev StreamEvent) {})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check that CLAUDE_CONFIG_DIR was NOT set
+	for _, env := range mock.env {
+		if strings.HasPrefix(env, "CLAUDE_CONFIG_DIR=") {
+			t.Errorf("expected no CLAUDE_CONFIG_DIR in env, but found: %s", env)
+		}
+	}
+}
+
+func TestSendPrompt_ConfigDirInheritsEnvironment(t *testing.T) {
+	mock := &mockCmd{
+		stdout: io.NopCloser(bytes.NewBufferString("")),
+	}
+
+	s := &Spawner{
+		config:     SpawnerConfig{ClaudePath: "claude", ConfigDir: "/custom/path"},
+		cmdFactory: newMockFactory(mock),
+	}
+
+	err := s.SendPrompt(context.Background(), "hello", func(ev StreamEvent) {})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// When ConfigDir is set, env should contain both inherited env vars and CLAUDE_CONFIG_DIR
+	// The mock should have env set (not nil/empty)
+	if mock.env == nil {
+		t.Error("expected env to be set when ConfigDir is specified")
+	}
+
+	// PATH should be inherited (exists in almost all environments)
+	hasPath := false
+	hasConfigDir := false
+	for _, env := range mock.env {
+		if strings.HasPrefix(env, "PATH=") {
+			hasPath = true
+		}
+		if env == "CLAUDE_CONFIG_DIR=/custom/path" {
+			hasConfigDir = true
+		}
+	}
+
+	if !hasPath {
+		t.Error("expected inherited PATH in env")
+	}
+	if !hasConfigDir {
+		t.Error("expected CLAUDE_CONFIG_DIR=/custom/path in env")
 	}
 }

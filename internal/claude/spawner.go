@@ -32,6 +32,7 @@ type Cmd interface {
 	Start() error
 	Wait() error
 	SetDir(dir string)
+	SetEnv(env []string)
 	Signal(sig os.Signal) error
 }
 
@@ -44,6 +45,7 @@ func (c *execCmd) StdoutPipe() (io.ReadCloser, error) { return c.cmd.StdoutPipe(
 func (c *execCmd) Start() error                       { return c.cmd.Start() }
 func (c *execCmd) Wait() error                        { return c.cmd.Wait() }
 func (c *execCmd) SetDir(dir string)                  { c.cmd.Dir = dir }
+func (c *execCmd) SetEnv(env []string)                { c.cmd.Env = env }
 
 func (c *execCmd) Signal(sig os.Signal) error {
 	if c.cmd.Process == nil {
@@ -63,6 +65,7 @@ func defaultCmdFactory(ctx context.Context, name string, args ...string) Cmd {
 type SpawnerConfig struct {
 	ClaudePath string // Path to claude binary (default: "claude")
 	WorkingDir string // Working directory for the child process
+	ConfigDir  string // CLAUDE_CONFIG_DIR environment variable (empty = use Claude default)
 }
 
 // Spawner manages a claude CLI child process.
@@ -140,6 +143,11 @@ func (s *Spawner) run(ctx context.Context, args []string, handler EventHandler) 
 	cmd := s.cmdFactory(ctx, s.config.ClaudePath, args...)
 	if s.config.WorkingDir != "" {
 		cmd.SetDir(s.config.WorkingDir)
+	}
+	if s.config.ConfigDir != "" {
+		// Inherit current environment and add CLAUDE_CONFIG_DIR
+		env := append(os.Environ(), "CLAUDE_CONFIG_DIR="+s.config.ConfigDir)
+		cmd.SetEnv(env)
 	}
 
 	stdout, err := cmd.StdoutPipe()

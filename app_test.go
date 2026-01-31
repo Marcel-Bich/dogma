@@ -731,3 +731,26 @@ func TestSendPromptWithSessionAndRequestId_LaunchesGoroutine(t *testing.T) {
 		t.Errorf("expected 'claude:done', got %q", events[0].name)
 	}
 }
+
+// --- GetClaudeConfigDir tests ---
+
+func TestGetClaudeConfigDir_ReturnsEnvValue(t *testing.T) {
+	result := getClaudeConfigDir(func(key string) string {
+		if key == "CLAUDE_CONFIG_DIR" {
+			return "/custom/claude/dir"
+		}
+		return ""
+	})
+	if result != "/custom/claude/dir" {
+		t.Errorf("expected '/custom/claude/dir', got %q", result)
+	}
+}
+
+func TestGetClaudeConfigDir_ReturnsEmptyWhenNotSet(t *testing.T) {
+	result := getClaudeConfigDir(func(key string) string {
+		return ""
+	})
+	if result != "" {
+		t.Errorf("expected empty string, got %q", result)
+	}
+}
