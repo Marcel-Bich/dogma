@@ -55,14 +55,28 @@ func NewApp() *App {
 	return &App{}
 }
 
+// getClaudeConfigDir reads CLAUDE_CONFIG_DIR from the environment.
+// Returns empty string if not set (Claude uses its default).
+func getClaudeConfigDir(getenv func(string) string) string {
+	return getenv("CLAUDE_CONFIG_DIR")
+}
+
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	// Read CLAUDE_CONFIG_DIR from environment
+	configDir := getClaudeConfigDir(os.Getenv)
+
 	a.spawner = claude.NewSpawner(claude.SpawnerConfig{
 		ClaudePath: "claude",
+		ConfigDir:  configDir,
 	})
-	a.lister = claude.NewSessionLister("")
+
+	// SessionLister: if ConfigDir is set, use it as base path
+	// Otherwise, use empty string (defaults to ~/.claude)
+	a.lister = claude.NewSessionLister(configDir)
 	a.emitter = &wailsEmitter{ctx: ctx}
 	a.applyUpdate = updater.ApplyUpdate
 
