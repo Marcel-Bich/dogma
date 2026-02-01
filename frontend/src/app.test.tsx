@@ -386,6 +386,41 @@ describe('App', () => {
 
       expect(mockBackend.cancelPrompt).toHaveBeenCalledTimes(1)
     })
+
+    it('sets cancelling=true when cancel is triggered', () => {
+      state.setLoading(true)
+      state.setStoppable(true)
+      const { getByTestId } = render(<App />)
+
+      const indicator = getByTestId('indicator')
+      fireEvent.click(indicator)
+
+      expect(state.cancelling.value).toBe(true)
+    })
+  })
+
+  describe('cancelling state reset', () => {
+    it('resets cancelling=false when result event arrives (success)', () => {
+      state.setCancelling(true)
+      state.setLoading(true)
+      render(<App />)
+
+      expect(registeredCallback).toBeDefined()
+      registeredCallback!({ type: 'result', result: 'done' })
+
+      expect(state.cancelling.value).toBe(false)
+    })
+
+    it('resets cancelling=false when result event arrives (error)', () => {
+      state.setCancelling(true)
+      state.setLoading(true)
+      render(<App />)
+
+      expect(registeredCallback).toBeDefined()
+      registeredCallback!({ type: 'result', result: 'error occurred', is_error: true })
+
+      expect(state.cancelling.value).toBe(false)
+    })
   })
 
   describe('error display', () => {

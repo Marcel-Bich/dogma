@@ -118,6 +118,16 @@ body {
   animation: loading-dot 1s ease-in-out infinite;
 }
 
+/* Cancel pulse animation for cancelling state */
+@keyframes cancel-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.cancel-pulse {
+  animation: cancel-pulse 0.4s ease-in-out infinite;
+}
+
 /* Sticky loading indicator for when messages exist */
 .loading-indicator-sticky {
   position: sticky;

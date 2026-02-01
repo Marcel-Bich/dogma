@@ -10,6 +10,7 @@ import {
   messages,
   loading,
   stoppable,
+  cancelling,
   error,
   sessionId,
   settingsOpen,
@@ -24,6 +25,7 @@ import {
   generateRequestId,
   setLoading,
   setStoppable,
+  setCancelling,
   setError,
   setSettingsOpen,
   setActiveTheme,
@@ -63,6 +65,7 @@ export function App() {
         console.log('[BRIDGE] Result (success):', event.result)
         setLoading(false)
         setStoppable(false)
+        setCancelling(false)
       } else if (event.type === 'result' && event.is_error) {
         console.error('[BRIDGE] Result (error):', event.result)
         // Add error block to chat history (permanent) AND set error signal (temporary banner)
@@ -70,6 +73,7 @@ export function App() {
         setError(event.result || 'Unknown error')
         setLoading(false)
         setStoppable(false)
+        setCancelling(false)
       } else {
         console.log('[BRIDGE] Handling event:', event.type)
         handleBridgeEvent(event)
@@ -126,6 +130,7 @@ export function App() {
 
   function handleCancel() {
     console.log('[APP] handleCancel - stopping current prompt')
+    setCancelling(true)
     backend.cancelPrompt()
   }
 
@@ -206,6 +211,7 @@ export function App() {
             onCancel={handleCancel}
             loading={loading.value}
             stoppable={stoppable.value}
+            cancelling={cancelling.value}
             spellCheck={spellCheck.value}
           />
         </div>

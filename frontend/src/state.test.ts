@@ -3,6 +3,7 @@ import {
   messages,
   loading,
   stoppable,
+  cancelling,
   error,
   sessionId,
   sessions,
@@ -19,6 +20,7 @@ import {
   handleBridgeEvent,
   setLoading,
   setStoppable,
+  setCancelling,
   setError,
   setMenuOpen,
   setSettingsOpen,
@@ -426,6 +428,23 @@ describe('state', () => {
     })
   })
 
+  describe('cancelling', () => {
+    it('starts as false', () => {
+      expect(cancelling.value).toBe(false)
+    })
+
+    it('setCancelling(true) updates cancelling.value to true', () => {
+      setCancelling(true)
+      expect(cancelling.value).toBe(true)
+    })
+
+    it('setCancelling(false) updates cancelling.value to false', () => {
+      setCancelling(true)
+      setCancelling(false)
+      expect(cancelling.value).toBe(false)
+    })
+  })
+
   describe('setError', () => {
     it('sets error message', () => {
       setError('something went wrong')
@@ -451,6 +470,7 @@ describe('state', () => {
       addMessage(msg)
       setLoading(true)
       setStoppable(true)
+      setCancelling(true)
       setError('some error')
       setCurrentRequestId('test-request')
       handleBridgeEvent({ type: 'system', session_id: 'sess-1', request_id: 'test-request' })
@@ -461,6 +481,7 @@ describe('state', () => {
       expect(messages.value).toEqual([])
       expect(loading.value).toBe(false)
       expect(stoppable.value).toBe(false)
+      expect(cancelling.value).toBe(false)
       expect(error.value).toBeNull()
       expect(sessionId.value).toBeNull()
     })
