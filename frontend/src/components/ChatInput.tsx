@@ -6,12 +6,13 @@ interface ChatInputProps {
   onCancel: () => void
   loading: boolean
   stoppable?: boolean
+  cancelling?: boolean
   spellCheck?: boolean
 }
 
 type InputState = 'idle' | 'ready' | 'pending' | 'loading'
 
-export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = false, spellCheck = false }: ChatInputProps) {
+export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = false, cancelling = false, spellCheck = false }: ChatInputProps) {
   const [text, setText] = useState('')
   const [state, setState] = useState<InputState>('idle')
   const [enterCount, setEnterCount] = useState(0)
@@ -220,12 +221,14 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
   function renderIndicatorContent() {
     // Loading + showStop (after 1s): CSS square (stop button)
     if (loading && showStop) {
-      return <span class="stop-square w-3 h-3 bg-current inline-block" />
+      const squareClass = cancelling ? 'stop-square w-3 h-3 bg-current inline-block cancel-pulse' : 'stop-square w-3 h-3 bg-current inline-block'
+      return <span class={squareClass} />
     }
     // Loading (first 1s): animated dots (still clickable for cancel)
     if (loading) {
+      const dotsClass = cancelling ? 'loading-dots flex gap-0.5 cancel-pulse' : 'loading-dots flex gap-0.5'
       return (
-        <span class="loading-dots flex gap-0.5">
+        <span class={dotsClass}>
           <span class="w-1 h-1 bg-current rounded-full animate-loading-dot" style={{ animationDelay: '0ms' }} />
           <span class="w-1 h-1 bg-current rounded-full animate-loading-dot" style={{ animationDelay: '150ms' }} />
           <span class="w-1 h-1 bg-current rounded-full animate-loading-dot" style={{ animationDelay: '300ms' }} />
@@ -307,7 +310,7 @@ export function ChatInput({ onSend, onContinue, onCancel, loading, stoppable = f
             onClick={handleIndicatorClick}
             class={`absolute right-1 top-0 bottom-0 flex items-center justify-center w-8 h-full text-lg font-mono transition-all duration-200 border-none bg-transparent cursor-pointer hover:bg-white/10 rounded ${isIndicatorDim() ? 'opacity-40' : ''}`}
             style={{ color: getIndicatorColor() }}
-            aria-label={loading && showStop ? 'Stop' : loading ? 'Cancel' : 'Send'}
+            aria-label={loading && showStop ? (cancelling ? 'Stopping' : 'Stop') : loading ? 'Cancel' : 'Send'}
           >
             {renderIndicatorContent()}
           </button>

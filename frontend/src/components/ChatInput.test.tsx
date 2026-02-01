@@ -9,6 +9,7 @@ describe('ChatInput', () => {
     onCancel: vi.fn(),
     loading: false,
     stoppable: false,
+    cancelling: false,
     spellCheck: false,
   }
 
@@ -627,6 +628,64 @@ describe('ChatInput', () => {
       const { getByLabelText } = setup()
       const textarea = getByLabelText('Enter your prompt...') as HTMLTextAreaElement
       expect(textarea.style.background).toBe('var(--bg-color)')
+    })
+  })
+
+  describe('cancelling state', () => {
+    it('loading dots have cancel-pulse class when cancelling=true', () => {
+      const { getByTestId } = setup({ loading: true, stoppable: true, cancelling: true })
+      const indicator = getByTestId('indicator')
+      const loadingDots = indicator.querySelector('.loading-dots')
+      expect(loadingDots?.className).toContain('cancel-pulse')
+    })
+
+    it('loading dots do not have cancel-pulse class when cancelling=false', () => {
+      const { getByTestId } = setup({ loading: true, stoppable: true, cancelling: false })
+      const indicator = getByTestId('indicator')
+      const loadingDots = indicator.querySelector('.loading-dots')
+      expect(loadingDots?.className).not.toContain('cancel-pulse')
+    })
+
+    it('stop square has cancel-pulse class when cancelling=true (after 1s delay)', () => {
+      const { getByTestId } = setup({ loading: true, stoppable: true, cancelling: true })
+      // Wait for stop square to appear
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+      const indicator = getByTestId('indicator')
+      const stopSquare = indicator.querySelector('.stop-square')
+      expect(stopSquare?.className).toContain('cancel-pulse')
+    })
+
+    it('stop square does not have cancel-pulse class when cancelling=false', () => {
+      const { getByTestId } = setup({ loading: true, stoppable: true, cancelling: false })
+      // Wait for stop square to appear
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+      const indicator = getByTestId('indicator')
+      const stopSquare = indicator.querySelector('.stop-square')
+      expect(stopSquare?.className).not.toContain('cancel-pulse')
+    })
+
+    it('indicator aria-label shows Stopping when cancelling=true and showStop', () => {
+      const { getByTestId } = setup({ loading: true, stoppable: true, cancelling: true })
+      // Wait for stop square to appear
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+      const indicator = getByTestId('indicator')
+      expect(indicator.getAttribute('aria-label')).toBe('Stopping')
+    })
+
+    it('indicator aria-label shows Stop when not cancelling and showStop', () => {
+      const { getByTestId } = setup({ loading: true, stoppable: true, cancelling: false })
+      // Wait for stop square to appear
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+      const indicator = getByTestId('indicator')
+      expect(indicator.getAttribute('aria-label')).toBe('Stop')
     })
   })
 })

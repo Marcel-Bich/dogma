@@ -10,6 +10,7 @@ export function generateId(): string {
 export const messages = signal<ChatMessage[]>([])
 export const loading = signal(false)
 export const stoppable = signal(false)
+export const cancelling = signal(false)
 export const error = signal<string | null>(null)
 export const sessionId = signal<string | null>(null)
 export const currentRequestId = signal<string | null>(null)
@@ -145,6 +146,10 @@ export function setStoppable(value: boolean): void {
   stoppable.value = value
 }
 
+export function setCancelling(value: boolean): void {
+  cancelling.value = value
+}
+
 export function setError(value: string | null): void {
   error.value = value
 }
@@ -194,6 +199,7 @@ export function resetState(): void {
   messages.value = []
   loading.value = false
   stoppable.value = false
+  cancelling.value = false
   error.value = null
   sessionId.value = null
   currentRequestId.value = null
