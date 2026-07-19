@@ -75,11 +75,11 @@ See [TRADEMARK.md](TRADEMARK.md) for the full trademark policy.
 
 ## Star History
 
-<a href="https://www.star-history.com/#Marcel-Bich/dogma&type=date&legend=top-left">
+<a href="https://www.star-history.com/?type=date&legend=top-left&repos=Marcel-Bich%2Fdogma">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Marcel-Bich/dogma&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Marcel-Bich/dogma&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Marcel-Bich/dogma&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Marcel-Bich/dogma&type=date&theme=dark&legend=top-left&sealed_token=jwO_OfWs-CNo6r9OYLiRI-lXRf02eOLYHCS0I9CCKC8QWiIBEH9BrVP-RnJf972g0_xqlUoTzTwiUxUDf0shG6c5QegMQraC_DcRPGPeSJ7bSjSvRnFu_VrzlWnwfr5PlSppWbZA8IRv0RNq0SNbjBd27TxwsY46Xynkrklo_vi92X-I_aIXeP3aXyok" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Marcel-Bich/dogma&type=date&legend=top-left&sealed_token=jwO_OfWs-CNo6r9OYLiRI-lXRf02eOLYHCS0I9CCKC8QWiIBEH9BrVP-RnJf972g0_xqlUoTzTwiUxUDf0shG6c5QegMQraC_DcRPGPeSJ7bSjSvRnFu_VrzlWnwfr5PlSppWbZA8IRv0RNq0SNbjBd27TxwsY46Xynkrklo_vi92X-I_aIXeP3aXyok" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Marcel-Bich/dogma&type=date&legend=top-left&sealed_token=jwO_OfWs-CNo6r9OYLiRI-lXRf02eOLYHCS0I9CCKC8QWiIBEH9BrVP-RnJf972g0_xqlUoTzTwiUxUDf0shG6c5QegMQraC_DcRPGPeSJ7bSjSvRnFu_VrzlWnwfr5PlSppWbZA8IRv0RNq0SNbjBd27TxwsY46Xynkrklo_vi92X-I_aIXeP3aXyok" />
  </picture>
 </a>
 
